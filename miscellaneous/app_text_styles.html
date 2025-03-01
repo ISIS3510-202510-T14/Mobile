@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AppTextStyles Showcase</title>
+
+  <!-- Import Roboto from Google Fonts (weights 400, 600, 700) -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <style>
+    /* Basic page styling */
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: #222; /* Dark background, like a dark theme */
+      color: #fff;            /* White text for contrast */
+      font-family: 'Roboto', sans-serif;
+    }
+
+    h1, h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-weight: 400;
+    }
+
+    /* Container for each style example */
+    section {
+      margin-bottom: 40px;
+    }
+
+    /* We'll use a "card" or "swatch" approach to highlight each text style */
+    .swatch {
+      background-color: #333;  /* slightly lighter dark */
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .style-heading {
+      font-size: 14px;
+      text-transform: uppercase;
+      opacity: 0.8;
+      margin: 0 0 8px;
+    }
+    .style-info {
+      font-size: 12px;
+      opacity: 0.7;
+      margin: 0 0 12px;
+      line-height: 1.4;
+    }
+
+    /* -------------- EXACT MATCH TO YOUR DART FILE -------------- */
+    /* 1) displayLarge => fontSize: 36, fontWeight: w700, height: 1.2 */
+    .displayLarge {
+      font-family: 'Roboto', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    /* 2) titleMedium => fontSize: 24, fontWeight: w600, height: 1.3 */
+    .titleMedium {
+      font-family: 'Roboto', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.3;
+      margin: 0;
+    }
+
+    /* 3) bodyMedium => fontSize: 16, fontWeight: w400, height: 1.5 */
+    .bodyMedium {
+      font-family: 'Roboto', sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* 4) bodySmall => fontSize: 12, fontWeight: w400, height: 1.5 */
+    .bodySmall {
+      font-family: 'Roboto', sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.5;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>AppTextStyles Showcase</h1>
+  <p style="max-width: 600px;">
+    Below are four style “swatches” reflecting the same definitions from
+    <code>AppTextStyles</code> in Flutter:
+    <strong>displayLarge</strong>, <strong>titleMedium</strong>,
+    <strong>bodyMedium</strong>, and <strong>bodySmall</strong>.
+    We’re using the “Roboto” font from Google Fonts (weights 400, 600, 700).
+    The background is dark to mimic a typical Material dark theme environment.
+  </p>
+
+  <!-- displayLarge -->
+  <section>
+    <h2>displayLarge</h2>
+    <div class="swatch">
+      <p class="style-heading">displayLarge</p>
+      <p class="style-info">
+        fontSize: <strong>36px</strong> | fontWeight: <strong>700</strong> (Bold) | lineHeight: <strong>1.2</strong>
+      </p>
+      <p class="displayLarge">
+        This is an example of <em>displayLarge</em>.
+        Perfect for hero headlines or top-level titles.
+      </p>
+    </div>
+  </section>
+
+  <!-- titleMedium -->
+  <section>
+    <h2>titleMedium</h2>
+    <div class="swatch">
+      <p class="style-heading">titleMedium</p>
+      <p class="style-info">
+        fontSize: <strong>24px</strong> | fontWeight: <strong>600</strong> (Semi-Bold) | lineHeight: <strong>1.3</strong>
+      </p>
+      <p class="titleMedium">
+        This is <em>titleMedium</em>.
+        Perfect for subheadings or mid-level headings.
+      </p>
+    </div>
+  </section>
+
+  <!-- bodyMedium -->
+  <section>
+    <h2>bodyMedium</h2>
+    <div class="swatch">
+      <p class="style-heading">bodyMedium</p>
+      <p class="style-info">
+        fontSize: <strong>16px</strong> | fontWeight: <strong>400</strong> (Normal) | lineHeight: <strong>1.5</strong>
+      </p>
+      <p class="bodyMedium">
+        This is <em>bodyMedium</em>.
+        Ideal for regular paragraph text with comfortable readability.
+      </p>
+    </div>
+  </section>
+
+  <!-- bodySmall -->
+  <section>
+    <h2>bodySmall</h2>
+    <div class="swatch">
+      <p class="style-heading">bodySmall</p>
+      <p class="style-info">
+        fontSize: <strong>12px</strong> | fontWeight: <strong>400</strong> (Normal) | lineHeight: <strong>1.5</strong>
+      </p>
+      <p class="bodySmall">
+        This is <em>bodySmall</em>. 
+        Great for captions, disclaimers, or smaller text elements.
+      </p>
+    </div>
+  </section>
+
+</body>
+</html>

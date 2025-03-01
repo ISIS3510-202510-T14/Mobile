@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HSL Color Palette</title>
+  <style>
+    /* Basic page styling */
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: sans-serif;
+      background-color: #222; /* dark background */
+      color: #fff;
+    }
+
+    h1, h2 {
+      margin: 0 0 16px;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    /* A container for each group of color swatches */
+    .palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    /* Each color swatch: a box with centered text. */
+    .swatch {
+      width: 140px;
+      height: 80px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff; /* default white text */
+      font-weight: bold;
+      text-align: center;
+      padding: 4px;
+    }
+
+    .swatch .name {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .swatch .hsl-value {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>HSL-Based Color Palette</h1>
+
+  <!-- 1) GREY SCALE -->
+  <section>
+    <h2>Warm Greys</h2>
+    <div class="palette">
+
+      <!-- grey900: hsl(30, 6%, 8%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 8%);">
+        <div class="name">grey900</div>
+        <div class="hsl-value">hsl(30, 6%, 8%)</div>
+      </div>
+
+      <!-- grey800: hsl(30, 6%, 12%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 12%);">
+        <div class="name">grey800</div>
+        <div class="hsl-value">hsl(30, 6%, 12%)</div>
+      </div>
+
+      <!-- grey700: hsl(30, 6%, 16%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 16%);">
+        <div class="name">grey700</div>
+        <div class="hsl-value">hsl(30, 6%, 16%)</div>
+      </div>
+
+      <!-- grey600: hsl(30, 6%, 24%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 24%);">
+        <div class="name">grey600</div>
+        <div class="hsl-value">hsl(30, 6%, 24%)</div>
+      </div>
+
+      <!-- grey500: hsl(30, 6%, 32%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 32%);">
+        <div class="name">grey500</div>
+        <div class="hsl-value">hsl(30, 6%, 32%)</div>
+      </div>
+
+      <!-- grey400: hsl(30, 6%, 50%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 50%);">
+        <div class="name">grey400</div>
+        <div class="hsl-value">hsl(30, 6%, 50%)</div>
+      </div>
+
+      <!-- grey300: hsl(30, 6%, 70%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 70%); color: #000;">
+        <div class="name">grey300</div>
+        <div class="hsl-value">hsl(30, 6%, 70%)</div>
+      </div>
+
+      <!-- grey200: hsl(30, 6%, 85%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 85%); color: #000;">
+        <div class="name">grey200</div>
+        <div class="hsl-value">hsl(30, 6%, 85%)</div>
+      </div>
+
+      <!-- grey100: hsl(30, 6%, 95%) -->
+      <div class="swatch" style="background-color: hsl(30, 6%, 95%); color: #000;">
+        <div class="name">grey100</div>
+        <div class="hsl-value">hsl(30, 6%, 95%)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2) PURPLE SCALE -->
+  <section>
+    <h2>Purple Shades</h2>
+    <div class="palette">
+
+      <!-- purple100: hsl(270, 60%, 90%) -->
+      <div class="swatch" style="background-color: hsl(270, 60%, 90%); color: #000;">
+        <div class="name">purple100</div>
+        <div class="hsl-value">hsl(270, 60%, 90%)</div>
+      </div>
+
+      <!-- purple200: hsl(270, 65%, 80%) -->
+      <div class="swatch" style="background-color: hsl(270, 65%, 80%); color: #000;">
+        <div class="name">purple200</div>
+        <div class="hsl-value">hsl(270, 65%, 80%)</div>
+      </div>
+
+      <!-- purple300: hsl(270, 65%, 70%) -->
+      <div class="swatch" style="background-color: hsl(270, 65%, 70%); color: #000;">
+        <div class="name">purple300</div>
+        <div class="hsl-value">hsl(270, 65%, 70%)</div>
+      </div>
+
+      <!-- purple400: hsl(270, 70%, 60%) -->
+      <div class="swatch" style="background-color: hsl(270, 70%, 60%);">
+        <div class="name">purple400</div>
+        <div class="hsl-value">hsl(270, 70%, 60%)</div>
+      </div>
+
+      <!-- purple500: hsl(270, 80%, 50%) -->
+      <div class="swatch" style="background-color: hsl(270, 80%, 50%);">
+        <div class="name">purple500</div>
+        <div class="hsl-value">hsl(270, 80%, 50%)</div>
+      </div>
+
+      <!-- purple600: hsl(268, 85%, 40%) -->
+      <div class="swatch" style="background-color: hsl(268, 85%, 40%);">
+        <div class="name">purple600</div>
+        <div class="hsl-value">hsl(268, 85%, 40%)</div>
+      </div>
+
+      <!-- purple700: hsl(266, 90%, 33%) -->
+      <div class="swatch" style="background-color: hsl(266, 90%, 33%);">
+        <div class="name">purple700</div>
+        <div class="hsl-value">hsl(266, 90%, 33%)</div>
+      </div>
+
+      <!-- purple800: hsl(265, 95%, 24%) -->
+      <div class="swatch" style="background-color: hsl(265, 95%, 24%);">
+        <div class="name">purple800</div>
+        <div class="hsl-value">hsl(265, 95%, 24%)</div>
+      </div>
+
+      <!-- purple900: hsl(264, 100%, 16%) -->
+      <div class="swatch" style="background-color: hsl(264, 100%, 16%);">
+        <div class="name">purple900</div>
+        <div class="hsl-value">hsl(264, 100%, 16%)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3) ACCENT COLORS -->
+  <section>
+    <h2>Accent Colors</h2>
+
+    <h3>Error (Red)</h3>
+    <div class="palette">
+      <!-- errorLight: hsl(0, 80%, 80%) -->
+      <div class="swatch" style="background-color: hsl(0, 80%, 80%); color: #000;">
+        <div class="name">errorLight</div>
+        <div class="hsl-value">hsl(0, 80%, 80%)</div>
+      </div>
+      <!-- error: hsl(0, 90%, 50%) -->
+      <div class="swatch" style="background-color: hsl(0, 90%, 50%);">
+        <div class="name">error</div>
+        <div class="hsl-value">hsl(0, 90%, 50%)</div>
+      </div>
+      <!-- errorDark: hsl(0, 95%, 40%) -->
+      <div class="swatch" style="background-color: hsl(0, 95%, 40%);">
+        <div class="name">errorDark</div>
+        <div class="hsl-value">hsl(0, 95%, 40%)</div>
+      </div>
+    </div>
+
+    <h3>Success (Teal)</h3>
+    <div class="palette">
+      <!-- successLight: hsl(180, 55%, 80%) -->
+      <div class="swatch" style="background-color: hsl(180, 55%, 80%); color: #000;">
+        <div class="name">successLight</div>
+        <div class="hsl-value">hsl(180, 55%, 80%)</div>
+      </div>
+      <!-- success: hsl(180, 65%, 45%) -->
+      <div class="swatch" style="background-color: hsl(180, 65%, 45%);">
+        <div class="name">success</div>
+        <div class="hsl-value">hsl(180, 65%, 45%)</div>
+      </div>
+      <!-- successDark: hsl(180, 70%, 30%) -->
+      <div class="swatch" style="background-color: hsl(180, 70%, 30%);">
+        <div class="name">successDark</div>
+        <div class="hsl-value">hsl(180, 70%, 30%)</div>
+      </div>
+    </div>
+
+    <h3>Warning (Yellow/Orange)</h3>
+    <div class="palette">
+      <!-- warningLight: hsl(50, 90%, 80%) -->
+      <div class="swatch" style="background-color: hsl(50, 90%, 80%); color: #000;">
+        <div class="name">warningLight</div>
+        <div class="hsl-value">hsl(50, 90%, 80%)</div>
+      </div>
+      <!-- warning: hsl(48, 95%, 50%) -->
+      <div class="swatch" style="background-color: hsl(48, 95%, 50%);">
+        <div class="name">warning</div>
+        <div class="hsl-value">hsl(48, 95%, 50%)</div>
+      </div>
+      <!-- warningDark: hsl(46, 90%, 35%) -->
+      <div class="swatch" style="background-color: hsl(46, 90%, 35%);">
+        <div class="name">warningDark</div>
+        <div class="hsl-value">hsl(46, 90%, 35%)</div>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

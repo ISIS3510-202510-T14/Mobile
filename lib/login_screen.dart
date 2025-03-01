@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'theme/spacing.dart'; // Where we defined AppSpacing
-// If your design system files are in different paths, adjust imports accordingly.
+import 'theme/spacing.dart'; // Ensure this path matches your project structure
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,13 +13,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-
-  // For a subtle fade when toggling the icon, we can use AnimatedSwitcher or AnimatedCrossFade.
-  // We'll use AnimatedSwitcher below.
-
-  // For subtle screen transition/animation, we rely on Material route transitions by default
-  // or you can implement your own. We'll do a small fade-in in build() using an AnimationController
-  // if desired. (Optional step, but let's keep it simple for this example.)
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -36,7 +28,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       parent: _fadeController,
       curve: Curves.easeIn,
     );
-
     // Start the fade animation when the screen appears
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fadeController.forward();
@@ -58,10 +49,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final textTheme = theme.textTheme;
 
     return Scaffold(
-      // Because we're using a dark theme, scaffold background is dark by default
+      // Dark theme background is already applied from the global ThemeData
       body: FadeTransition(
         opacity: _fadeAnimation,
-        // The entire screen body subtly fades in
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.l),
@@ -69,9 +59,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // 1) LOGO or DUMMY IMAGE
-                // Replace with your actual asset or network image.
-                // E.g., if you have an assets/logo.png, you can use Image.asset('assets/logo.png').
-                // We'll just use a placeholder container here.
                 Container(
                   height: 100,
                   width: 100,
@@ -94,7 +81,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
+                  autocorrect: false,
+                  decoration: InputDecoration(
                     labelText: 'Email',
                     hintText: 'Enter your email',
                   ),
@@ -106,6 +94,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  autocorrect: false,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: 'Enter your password',
@@ -167,7 +156,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   void _handleSignIn() {
     // Implement your sign-in logic here
-    // e.g. call an auth service, then navigate to home, etc.
     debugPrint('Signing in with email: ${_emailController.text}, password: ${_passwordController.text}');
   }
 
