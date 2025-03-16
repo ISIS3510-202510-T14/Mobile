@@ -97,7 +97,7 @@ class MatchCard extends BaseMatchCard {
 
         // Date and time text below the button
         Text(
-          "Fecha: $dateString, Hora: $timeString",
+          "Date: $dateString, Time: $timeString",
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),

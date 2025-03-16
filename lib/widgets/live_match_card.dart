@@ -130,7 +130,7 @@ class LiveMatchCard extends BaseMatchCard {
 
         // (Optional) date/time
         Text(
-          "Fecha: $dateString, Hora: $timeString",
+          "Date: $dateString, Time: $timeString",
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),

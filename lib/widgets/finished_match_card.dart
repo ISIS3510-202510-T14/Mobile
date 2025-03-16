@@ -113,7 +113,7 @@ class FinishedMatchCard extends BaseMatchCard {
         // If tie, show something like "Empate" or "Draw"
         if (isTie)
           Text(
-            '¡Empate!',
+            '¡Draw!',
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
@@ -124,7 +124,7 @@ class FinishedMatchCard extends BaseMatchCard {
 
         // Additional info (date, time, location, etc.)
         Text(
-          "Fecha: $dateString, Hora: $timeString",
+          "Date: $dateString, Time: $timeString",
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),
