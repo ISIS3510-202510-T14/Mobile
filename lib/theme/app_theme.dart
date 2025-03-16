@@ -22,17 +22,12 @@ class AppTheme {
     // Or combine with default M3 text theme:
     // textTheme: Typography.material2021().white.merge(AppTextStyles.textTheme),
 
-    // Define a different scaffold background color than the card color
-    scaffoldBackgroundColor: AppColorScheme.darkColorSchemeHSL.background,
-    
-
     //--------------------------------------------------------------------
     // SHAPES
     //--------------------------------------------------------------------
     cardTheme: CardTheme(
       shape: AppShapes.cardShape,
       margin: EdgeInsets.zero,
-      color: AppColorScheme.darkColorSchemeHSL.surface,
       // color: optionally override the card background color:
       // color: AppColorScheme.darkColorSchemeHSL.surface,
     ),
