@@ -1,6 +1,6 @@
 // lib/widgets/base_match_card.dart
 import 'package:flutter/material.dart';
-import '../data/models/match_model.dart';
+import '../../data/models/match_model.dart';
 
 abstract class BaseMatchCard extends StatelessWidget {
   final MatchModel match;

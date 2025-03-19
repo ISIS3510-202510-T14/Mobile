@@ -24,10 +24,10 @@ class UserViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> addUser(String name, String email) async {
+  Future<void> addUser(String username, String fullName, String phoneNumber, String email, int age, String gender) async {
     try {
-      await _userRepository.createUser(name, email);
-      loadUsers(); // Refresh user list after adding
+      await _userRepository.createUser(username, fullName, phoneNumber, email, age, gender);
+      loadUsers();
     } catch (e) {
       print("Error adding user: $e");
     }

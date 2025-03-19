@@ -161,8 +161,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _handleSignUp() {
-    // Implement sign-up navigation or open a sign-up screen
-    debugPrint('Navigate to Sign Up screen');
-    Navigator.push(context, MaterialPageRoute(builder: (context) => SignUpScreen()));
+    setState(() {
+      debugPrint('Navigate to Sign Up screen');
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => SignUpScreen()),
+      );
+    });
   }
 }

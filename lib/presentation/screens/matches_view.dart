@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../widgets/match_card.dart';
+import '../widgets/match_card.dart';
 import '../../data/models/match_model.dart';
-import '../../widgets/match_card_factory.dart';
+import '../widgets/match_card_factory.dart';
 
 class MatchesView extends StatefulWidget {
   const MatchesView({Key? key}) : super(key: key);

@@ -1,6 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/user.dart';
 
 class UserRepository {
@@ -13,10 +11,14 @@ class UserRepository {
         .toList();
   }
 
-  Future<void> createUser(String name, String email) async {
+  Future<void> createUser(String username, String fullName, String phoneNumber, String email, int age, String gender) async {
     await _firestore.collection('users').add({
-      'name': name,
+      'username': username,
+      'fullName': fullName,
+      'phoneNumber': phoneNumber,
       'email': email,
+      'age': age,
+      'gender': gender
     });
   }
 }

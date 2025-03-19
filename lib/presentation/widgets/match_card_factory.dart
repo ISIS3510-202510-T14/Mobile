@@ -1,6 +1,6 @@
 // lib/widgets/match_card_factory.dart
 import 'package:flutter/material.dart';
-import '../data/models/match_model.dart';
+import '../../data/models/match_model.dart';
 import 'match_card.dart';
 import 'live_match_card.dart';
 //import 'upcoming_match_card.dart';

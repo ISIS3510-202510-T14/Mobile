@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'create_account_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -35,6 +36,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     // TODO: Add Firebase Auth Sign-Up logic here
     print("Signing up user: $username with email: $email");
+      Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => CreateAccountScreen(username: username, email: email, password: password,)),
+  );
   }
 
   void _showErrorDialog(String message) {
@@ -85,7 +90,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                 padding: EdgeInsets.symmetric(vertical: 15, horizontal: 80),
               ),
-              child: Text("Sign Up", style: TextStyle(fontSize: 18)),
+              child: Text("", style: TextStyle(fontSize: 18)),
             ),
 
             SizedBox(height: 20),

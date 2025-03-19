@@ -1,6 +1,6 @@
 // lib/viewmodels/matches_view_model.dart
 import 'package:flutter/material.dart';
-import '../data/models/match_model.dart';
+import '../../data/models/match_model.dart';
 
 class MatchesViewModel extends ChangeNotifier {
   // Hardcoded list of matches (for now)

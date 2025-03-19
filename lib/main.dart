@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'login_screen.dart'; // or your chosen path
-import "views/home_screen/matches_view.dart";
+import 'presentation/screens/login_screen.dart'; // or your chosen path
+import "presentation/screens/matches_view.dart";
 
 void main() {
   runApp(const MyApp());
@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
       title: 'Demo Matches',
 
       theme: AppTheme.darkTheme,
-      home: const MatchesView(),
+      home: const LoginScreen(),
     );
   }
 

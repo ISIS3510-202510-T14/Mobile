@@ -1,6 +1,6 @@
 // lib/widgets/match_card.dart
 import 'package:flutter/material.dart';
-import '../data/models/match_model.dart';
+import '../../data/models/match_model.dart';
 import 'base_match_card.dart';
 
 class MatchCard extends BaseMatchCard {
