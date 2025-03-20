@@ -20,16 +20,20 @@ class UserViewModel extends ChangeNotifier {
       print("Error loading users: $e");
     } finally {
       _isLoading = false;
-      notifyListeners();
     }
   }
 
   Future<void> addUser(String username, String fullName, String phoneNumber, String email, int age, String gender) async {
+    
+    _isLoading = true;
+    notifyListeners();
+
     try {
       await _userRepository.createUser(username, fullName, phoneNumber, email, age, gender);
-      loadUsers();
     } catch (e) {
       print("Error adding user: $e");
+    } finally {
+      _isLoading = false;
     }
-  }
+  }  
 }

@@ -12,13 +12,23 @@ class UserRepository {
   }
 
   Future<void> createUser(String username, String fullName, String phoneNumber, String email, int age, String gender) async {
-    await _firestore.collection('users').add({
-      'username': username,
-      'fullName': fullName,
-      'phoneNumber': phoneNumber,
-      'email': email,
-      'age': age,
-      'gender': gender
-    });
+    try {
+      await _firestore.disableNetwork();
+      await _firestore.enableNetwork();
+
+      print("UserRepository: Attempting to add user: $username");
+      DocumentReference docRef = await _firestore.collection('users').add({
+        'username': username,
+        'fullName': fullName,
+        'phoneNumber': phoneNumber,
+        'email': email,
+        'age': age,
+        'gender': gender
+      });
+
+      print("User successfully added with ID: ${docRef.id}");
+  } catch (e) {
+      print("Firestore error: $e");
+  }
   }
 }

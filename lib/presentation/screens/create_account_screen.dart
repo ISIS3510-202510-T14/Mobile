@@ -1,3 +1,5 @@
+import 'package:campus_picks/data/services/auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/user_viewmodel.dart';
@@ -24,7 +26,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   int? selectedAge;
   String selectedGender = 'Male';
 
-  void _submitForm() {
+  void _submitForm() async {
     if (fullNameController.text.isEmpty || phoneNumberController.text.isEmpty || selectedAge == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
@@ -40,6 +42,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       selectedAge!,
       selectedGender,
     );
+
+    try {
+      await authService.value.createUserWithEmailAndPassword(email: widget.email, password: widget.password);
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
 
     Navigator.pop(context);
   }

@@ -1,4 +1,6 @@
+import 'package:campus_picks/presentation/viewmodels/user_viewmodel.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'create_account_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -34,12 +36,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    // TODO: Add Firebase Auth Sign-Up logic here
-    print("Signing up user: $username with email: $email");
-      Navigator.pushReplacement(
+    Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => CreateAccountScreen(username: username, email: email, password: password,)),
-  );
+      MaterialPageRoute(builder: (context) => ChangeNotifierProvider(create: (context) => UserViewModel(), child: CreateAccountScreen(username: username, email: email, password: password,)))
+    );
   }
 
   void _showErrorDialog(String message) {
@@ -67,7 +67,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset("assets/logo_symbol.png", height: 100), // Replace with your logo
+            Image.asset("assets/images/logo_symbol.png", height: 100), // Replace with your logo
 
             SizedBox(height: 20),
 
@@ -90,14 +90,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                 padding: EdgeInsets.symmetric(vertical: 15, horizontal: 80),
               ),
-              child: Text("", style: TextStyle(fontSize: 18)),
+              child: Text("Continue", style: TextStyle(fontSize: 18)),
             ),
 
             SizedBox(height: 20),
 
             GestureDetector(
               onTap: () {
-                // TODO: Navigate to Sign In screen
                 print("Navigate to Sign In screen");
               },
               child: Text(

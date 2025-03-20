@@ -53,10 +53,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY']!,
-    appId: dotenv.env['FIREBASE_APP_ID']!,
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
+    apiKey: 'AIzaSyA1K_-SvCn41SyVSJrxC6HyoVk0oEscF7Y',
+    appId: '1:985133914720:android:5394b01a1bd0adda624105',
+    messagingSenderId: '985133914720',
+    projectId: 'campuspicks-ec98f',
+    databaseURL: 'https://campuspicks-ec98f-default-rtdb.firebaseio.com',
+    storageBucket: 'campuspicks-ec98f.firebasestorage.app',
   );
+
 }
