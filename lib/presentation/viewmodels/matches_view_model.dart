@@ -1,60 +1,71 @@
-// lib/viewmodels/matches_view_model.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../data/models/match_model.dart';
 
 class MatchesViewModel extends ChangeNotifier {
-  // Hardcoded list of matches (for now)
-  final List<MatchModel> _matches = [
-    MatchModel(
-      tournament: 'ASCUN B01',
-      matchId: '1',
-      teamA: 'U. Rosario',
-      teamB: 'U. Sabana',
-      dateTime: DateTime(2025, 4, 4, 15, 0),
-      status: 'Upcoming',
-      logoTeamA: 'assets/rosario.png',
-      logoTeamB: 'assets/sabana.png',
-    ),
-    MatchModel(
-      tournament: 'ASCUN B04',
-      matchId: '4',
-      teamA: 'Team Alpha',
-      teamB: 'Team Beta',
-      dateTime: DateTime(2025, 4, 4, 16, 30),
-      status: 'Live',
-      logoTeamA: 'assets/team_alpha.png',
-      logoTeamB: 'assets/team_beta.png',
-      scoreTeamA: 1,
-      scoreTeamB: 2,
-      minute: 53,
-    ),
-    MatchModel(
-      tournament: 'ASCUN B02',
-      matchId: '2',
-      teamA: 'Uniandes',
-      teamB: 'Javeriana',
-      dateTime: DateTime(2025, 4, 4, 18, 0),
-      status: 'Finished',
-      logoTeamA: 'assets/uniandes.png',
-      logoTeamB: 'assets/javeriana.png',
-      scoreTeamA: 2,
-      scoreTeamB: 1,
-    ),
-   
-  ];
+  List<MatchModel> liveMatches = [];
+  List<MatchModel> upcomingMatches = [];
+  List<MatchModel> finishedMatches = [];
 
-  // Expose filtered lists
-  List<MatchModel> get liveMatches =>
-      _matches.where((match) => match.status == 'Live').toList();
+  /// Fetches events from the API endpoint using a GET request.
+  /// Optional query parameters: [sport] and [startDate].
+  Future<void> fetchMatches({String? sport, DateTime? startDate}) async {
+  print('[fetchMatches] Iniciando método...');
 
-  List<MatchModel> get upcomingMatches =>
-      _matches.where((match) => match.status == 'Upcoming').toList();
+  // Construir parámetros de consulta
+  final queryParameters = {
+    if (sport != null) 'sport': sport,
+    if (startDate != null) 'startDate': startDate.toIso8601String(),
+  };
+  print('[fetchMatches] Parámetros de consulta: $queryParameters');
 
-  List<MatchModel> get finishedMatches =>
-      _matches.where((match) => match.status == 'Finished').toList();
+  // Usar Uri.http para HTTP (no https) en localhost
+  final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
+  print('[fetchMatches] URI construido: $uri');
+
+  try {
+    final response = await http.get(uri);
+    print('[fetchMatches] Código de estado: ${response.statusCode}');
+    print('[fetchMatches] Body de la respuesta: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('[fetchMatches] JSON decodificado: $data');
+
+      if (!data.containsKey('events')) {
+        print('[fetchMatches] La clave "events" no existe en la respuesta');
+        throw Exception('La respuesta no contiene "events".');
+      }
+
+      final events = data['events'] as List;
+      print('[fetchMatches] Cantidad de eventos: ${events.length}');
+
+      // Usamos el factory del modelo para parsear cada evento
+      List<MatchModel> matches = events.map((e) {
+        print('[fetchMatches] Procesando evento: $e');
+        final match = MatchModel.fromJson(e);
+        print('[fetchMatches] Location del match: ${match.location}');
+        return match;
+      }).toList();
 
 
-  Future<void> loadMatches() async {
+      // Separar según status (asegúrate de que los status estén en minúsculas en el API)
+      liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
+      upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+      finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
 
+      print('[fetchMatches] Petición exitosa. Notificando listeners...');
+      notifyListeners();
+    } else {
+      print('[fetchMatches] Respuesta != 200. Lanzando excepción...');
+      throw Exception('Failed to fetch matches');
+    }
+  } catch (e, s) {
+    print('[fetchMatches] Ocurrió un error: $e');
+    print('[fetchMatches] StackTrace: $s');
+    rethrow;
   }
+}
+
 }

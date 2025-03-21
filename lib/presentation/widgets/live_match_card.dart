@@ -42,7 +42,7 @@ class LiveMatchCard extends BaseMatchCard {
 
         // Tournament title
         Text(
-          match.tournament,
+          '${match.homeTeam} vs ${match.awayTeam}',
           textAlign: TextAlign.center,
           style: Theme.of(context)
               .textTheme
@@ -67,7 +67,7 @@ class LiveMatchCard extends BaseMatchCard {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  match.teamA,
+                  match.homeTeam,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -100,7 +100,7 @@ class LiveMatchCard extends BaseMatchCard {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  match.teamB,
+                  match.awayTeam,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -129,11 +129,13 @@ class LiveMatchCard extends BaseMatchCard {
         const SizedBox(height: 16),
 
         // (Optional) date/time
+        // Texto de fecha y hora
         Text(
-          "Date: $dateString, Time: $timeString",
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+      "Date: ${match.startTime.day}/${match.startTime.month}/${match.startTime.year}, "
+      "Time: ${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}",
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
       ],
     );
   }
