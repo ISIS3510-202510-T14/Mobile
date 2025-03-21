@@ -1,8 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+        <!-- Declara aquí tus permisos, antes de <application> -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    
     <application
         android:label="campus_picks"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+   
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"

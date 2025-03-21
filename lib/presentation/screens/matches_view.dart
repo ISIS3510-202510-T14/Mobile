@@ -20,13 +20,13 @@ class _MatchesViewState extends State<MatchesView> with SingleTickerProviderStat
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _matchesViewModel = MatchesViewModel();
-
-    // Llamamos al método para obtener los datos del API.
-    // Es buena idea manejar errores en producción.
-    _matchesViewModel.fetchMatches().catchError((error) {
-      // Aquí podrías mostrar un mensaje de error, por ejemplo.
-      print('Error al obtener los partidos: $error');
-    });
+    
+     _matchesViewModel.fetchMatches().then((_) {
+    // Una vez obtenidos, verificamos la proximidad y notificamos si corresponde
+    _matchesViewModel.checkProximityAndNotify();
+  }).catchError((error) {
+    print('Error al obtener los partidos: $error');
+  });
   }
 
   @override

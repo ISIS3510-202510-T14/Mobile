@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../data/models/match_model.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:geolocator/geolocator.dart';
+import '/main.dart' show flutterLocalNotificationsPlugin;
+
 
 class MatchesViewModel extends ChangeNotifier {
   List<MatchModel> liveMatches = [];
@@ -67,5 +71,152 @@ class MatchesViewModel extends ChangeNotifier {
     rethrow;
   }
 }
+
+  Future<Position> _determinePosition() async {
+  bool serviceEnabled;
+  LocationPermission permission;
+
+  // Check if GPS service is enabled.
+  serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) {
+    throw Exception('Location services are disabled');
+  }
+
+  // Check permissions.
+  permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      throw Exception('Location permissions are denied');
+    }
+  }
+  if (permission == LocationPermission.deniedForever) {
+    throw Exception('Location permissions are permanently denied');
+  }
+
+  // Return the current position
+  return await Geolocator.getCurrentPosition(
+    desiredAccuracy: LocationAccuracy.high,
+  );
+}
+
+Future<void> checkProximityAndNotify() async {
+  try {
+    // Get the user's current position
+    Position userPosition = await _determinePosition();
+    final double userLat = userPosition.latitude;
+    final double userLng = userPosition.longitude;
+
+    // Date formatter (if needed for the notification message)
+   // final DateFormat dateFormat = DateFormat("dd/MM/yyyy HH:mm");
+
+    // Check upcoming events (assumed status: "upcoming")
+    for (final match in upcomingMatches) {
+      // Calculate distance in meters between user and event location
+      double distanceMeters = Geolocator.distanceBetween(
+        userLat,
+        userLng,
+        match.location.lat,
+        match.location.lng,
+      );
+
+      print('User lat and lng: $userLat, $userLng');
+      print('Match location lat and lng: ${match.location.lat}, ${match.location.lng}');
+      double distanceKm = distanceMeters / 1000.0;
+
+      if (distanceKm <= 1.0) {
+        await _showNotification(
+          title: 'Upcoming Event Nearby',
+          body:
+              '${match.homeTeam} vs ${match.awayTeam} at ${match.startTime.day}/${match.startTime.month} ${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}\nDistance: ${distanceKm.toStringAsFixed(2)} km',
+        );
+      }
+    }
+
+    // Check live events (assumed status: "live")
+    for (final match in liveMatches) {
+      double distanceMeters = Geolocator.distanceBetween(
+        userLat,
+        userLng,
+        match.location.lat,
+        match.location.lng,
+      );
+      double distanceKm = distanceMeters / 1000.0;
+
+      if (distanceKm <= 1.0) {
+        if (distanceKm <= 0.1) {
+         // Complete
+
+
+        } else {
+          // Otherwise, a basic live event notification
+          await _showLiveMatchNotification(
+            match: match,
+            distanceInKm: distanceKm,
+            withBetNow: false,
+          );
+        }
+      }
+    }
+  } catch (e) {
+    print('Error in checkProximityAndNotify: $e');
+  }
+}
+
+/// Basic notification without actions.
+Future<void> _showNotification({
+  required String title,
+  required String body,
+}) async {
+  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'basic_channel_id',
+    'Basic Notifications',
+    channelDescription: 'Notifications for nearby events',
+    importance: Importance.max,
+    priority: Priority.high,
+  );
+  const NotificationDetails details = NotificationDetails(android: androidDetails);
+
+  await flutterLocalNotificationsPlugin.show(0, title, body, details);
+}
+
+/// Notification for live events; if withBetNow is true, includes a "Bet Now" action.
+Future<void> _showLiveMatchNotification({
+  required MatchModel match,
+  required double distanceInKm,
+  required bool withBetNow,
+}) async {
+  AndroidNotificationDetails androidDetails;
+  if (withBetNow) {
+    androidDetails = const AndroidNotificationDetails(
+      'live_channel',
+      'Live Events',
+      channelDescription: 'Notifications for live events near you',
+      importance: Importance.max,
+      priority: Priority.high,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction('bet_now_action', 'Bet Now'),
+      ],
+    );
+  } else {
+    androidDetails = const AndroidNotificationDetails(
+      'live_channel',
+      'Live Events',
+      channelDescription: 'Notifications for live events near you',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+  }
+  NotificationDetails details = NotificationDetails(android: androidDetails);
+
+  await flutterLocalNotificationsPlugin.show(
+    withBetNow ? 1 : 2, // Use different notification IDs
+    withBetNow ? 'Live Event - Bet Now!' : 'Live Event Nearby',
+    '${match.homeTeam} vs ${match.awayTeam}\nDistance: ${distanceInKm.toStringAsFixed(2)} km \n coords: ${match.location.lat}, ${match.location.lng} \n location: La caneca',
+    details,
+    //payload: withBetNow ? 'bet_now_action' : null,
+  );
+}
+  
 
 }
