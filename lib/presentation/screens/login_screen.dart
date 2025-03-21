@@ -1,6 +1,11 @@
+import 'package:campus_picks/presentation/viewmodels/user_viewmodel.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/spacing.dart';
 import 'sign_up_screen.dart';
+import 'matches_view.dart';
+import 'package:campus_picks/data/services/auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,7 +17,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   bool _obscurePassword = true;
 
   late AnimationController _fadeController;
@@ -29,7 +33,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       parent: _fadeController,
       curve: Curves.easeIn,
     );
-    // Start the fade animation when the screen appears
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fadeController.forward();
     });
@@ -45,109 +48,91 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    // Access the theme for styles
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
     return Scaffold(
-      // Dark theme background is already applied from the global ThemeData
+      backgroundColor: Colors.black,
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.l),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // 1) LOGO or DUMMY IMAGE
-                Container(
-                  height: 100,
-                  width: 100,
-                  margin: const EdgeInsets.only(bottom: AppSpacing.l),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
-                    shape: BoxShape.circle,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Logo
+                  Image.asset(
+                    'assets/images/logo_symbol.png', // Update with actual logo path
+                    height: 100,
                   ),
-                  child: Center(
-                    child: Text(
-                      'Logo',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface,
+                  const SizedBox(height: 32),
+
+                  // Email Input
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Email',
+                    icon: Icons.email,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Password Input
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: 'Password',
+                    icon: Icons.lock,
+                    obscureText: _obscurePassword,
+                    isPassword: true,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Forgot Password
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {}, // Implement Forgot Password logic
+                      child: Text(
+                        'Forgot Password?',
+                        style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 24),
 
-                // 2) EMAIL TEXT FIELD
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'Enter your email',
-                  ),
-                ),
-
-                SizedBox(height: AppSpacing.m),
-
-                // 3) PASSWORD TEXT FIELD with Toggle Icon
-                TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Enter your password',
-                    suffixIcon: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      transitionBuilder: (Widget child, Animation<double> animation) {
-                        return ScaleTransition(scale: animation, child: child);
-                      },
-                      child: IconButton(
-                        key: ValueKey<bool>(_obscurePassword),
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                  // Sign In Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _handleSignIn,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                        tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
+                      child: const Text('Sign In', style: TextStyle(fontSize: 18)),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 16),
 
-                SizedBox(height: AppSpacing.l),
-
-                // 4) SIGN IN BUTTON
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _handleSignIn,
-                    child: const Text('Sign In'),
+                  // Sign Up Link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account?",
+                        style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                      ),
+                      TextButton(
+                        onPressed: _handleSignUp,
+                        child: const Text('Sign Up', style: TextStyle(color: Colors.purpleAccent)),
+                      ),
+                    ],
                   ),
-                ),
-
-                SizedBox(height: AppSpacing.m),
-
-                // 5) "Not registered? Sign up."
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Not registered?",
-                      style: textTheme.bodyMedium,
-                    ),
-                    TextButton(
-                      onPressed: _handleSignUp,
-                      child: const Text('Sign up.'),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -155,18 +140,64 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
-  void _handleSignIn() {
-    // Implement your sign-in logic here
-    debugPrint('Signing in with email: ${_emailController.text}, password: ${_passwordController.text}');
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    bool isPassword = false,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        filled: true,
+        fillColor: Colors.black54,
+        prefixIcon: Icon(icon, color: Colors.white70),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off, color: Colors.white70),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  void _handleSignIn() async {
+    try {
+      await authService.value.signInWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      // Navigate to MatchesView
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => MatchesView()),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message ?? "Authentication Error")),
+      );
+    }
   }
 
   void _handleSignUp() {
-    setState(() {
-      debugPrint('Navigate to Sign Up screen');
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => SignUpScreen()),
-      );
-    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SignUpScreen()),
+    );
   }
 }

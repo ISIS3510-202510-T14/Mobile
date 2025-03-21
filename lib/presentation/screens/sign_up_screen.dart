@@ -97,7 +97,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
             GestureDetector(
               onTap: () {
-                print("Navigate to Sign In screen");
+                Navigator.pop(context);
               },
               child: Text(
                 "Already have an account? Sign In",

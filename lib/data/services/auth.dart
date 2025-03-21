@@ -18,6 +18,11 @@ class AuthService{
     await auth.createUserWithEmailAndPassword(email: email, password: password);
   }
 
+  // get token
+  Future<String?> getToken() async {
+    return await currentUser?.getIdToken();
+  }
+
   Future<void> signOut() async {
     await auth.signOut();
   }
