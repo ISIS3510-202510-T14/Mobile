@@ -9,38 +9,44 @@ class LiveMatchCard extends BaseMatchCard {
 
   @override
   Widget buildMatchContent(BuildContext context) {
-    // Current score (if any)
+    // Score actual (fallback a 0)
     final scoreA = match.scoreTeamA ?? 0;
     final scoreB = match.scoreTeamB ?? 0;
+  
 
-    // Minute or time elapsed in the match
+
+    // Minuto actual o tiempo transcurrido
     final minute = match.minute ?? 0;
 
-    // Format date/time if you still want to display it
-    final dateString = "${match.dateTime.day}/${match.dateTime.month}/${match.dateTime.year}";
-    final timeString = "${match.dateTime.hour.toString().padLeft(2, '0')}:${match.dateTime.minute.toString().padLeft(2, '0')}";
+    // Formateo de fecha y hora usando match.startTime
+    final dateString =
+        "${match.startTime.day}/${match.startTime.month}/${match.startTime.year}";
+    final timeString =
+        "${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}";
+
+    // Indicador LIVE (icono y texto)
+    Widget liveIndicator = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.circle, color: Colors.red, size: 10),
+        const SizedBox(width: 4),
+        Text(
+          "LIVE",
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+      ],
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // "LIVE" indicator in red
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.circle, color: Colors.red, size: 10),
-            const SizedBox(width: 4),
-            Text(
-              "LIVE",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ],
-        ),
+        // Indicador LIVE arriba
+        liveIndicator,
         const SizedBox(height: 8),
-
-        // Tournament title
+        // Título del partido
         Text(
           '${match.homeTeam} vs ${match.awayTeam}',
           textAlign: TextAlign.center,
@@ -50,12 +56,11 @@ class LiveMatchCard extends BaseMatchCard {
               ?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-
-        // Row with team logos and scores
+        // Fila con la información de cada equipo
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Team A
+            // Columna para el equipo A
             Column(
               children: [
                 Image.asset(
@@ -67,28 +72,17 @@ class LiveMatchCard extends BaseMatchCard {
                 ),
                 const SizedBox(height: 4),
                 Text(
+                  scoreA.toString(),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
                   match.homeTeam,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
-
-            // Score A
-            Text(
-              scoreA.toString(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-
-            // Separator (like " - ")
-            const Text('-', style: TextStyle(fontSize: 16)),
-
-            // Score B
-            Text(
-              scoreB.toString(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-
-            // Team B
+            // Columna para el equipo B
             Column(
               children: [
                 Image.asset(
@@ -100,6 +94,11 @@ class LiveMatchCard extends BaseMatchCard {
                 ),
                 const SizedBox(height: 4),
                 Text(
+                  scoreB.toString(),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
                   match.awayTeam,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
@@ -108,34 +107,29 @@ class LiveMatchCard extends BaseMatchCard {
           ],
         ),
         const SizedBox(height: 8),
-
-        // Show minute or time elapsed
+        // Mostrar el minuto transcurrido (ejemplo: "53’")
         Text(
-          "$minute’", // E.g. "53’"
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey,
-              ),
+          "$minute’",
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: Colors.grey),
         ),
         const SizedBox(height: 12),
-
-        // "Bet Now" button
+        // Botón "Bet Now"
         ElevatedButton(
           onPressed: () {
-            // Action for live betting
+            // Acción para apostar en vivo
           },
           child: const Text('Bet Now'),
         ),
-
         const SizedBox(height: 16),
-
-        // (Optional) date/time
-        // Texto de fecha y hora
+        // Información de fecha y hora
         Text(
-      "Date: ${match.startTime.day}/${match.startTime.month}/${match.startTime.year}, "
-      "Time: ${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}",
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.bodySmall,
-    ),
+          "Date: $dateString, Time: $timeString",
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }

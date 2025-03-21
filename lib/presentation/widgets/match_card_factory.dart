@@ -10,11 +10,11 @@ class MatchCardFactory {
   /// Creates a MatchCard widget based on the match status.
   static Widget createMatchCard(MatchModel match) {
     switch (match.status) {
-      case 'Live':
+      case 'live':
         return LiveMatchCard(match: match);
-      case 'Upcoming':
+      case 'upcoming':
         return MatchCard(match: match);
-      case 'Finished':
+      case 'finished':
         return FinishedMatchCard(match: match);
       default:
         return MatchCard(match: match);
