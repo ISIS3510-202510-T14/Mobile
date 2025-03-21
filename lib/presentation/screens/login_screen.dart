@@ -185,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       // Navigate to MatchesView
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => MatchesView()),
+        MaterialPageRoute(builder: (context) => const HomeNav()),
       );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
