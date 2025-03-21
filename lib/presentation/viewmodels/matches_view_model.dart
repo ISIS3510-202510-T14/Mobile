@@ -145,7 +145,12 @@ Future<void> checkProximityAndNotify() async {
 
       if (distanceKm <= 1.0) {
         if (distanceKm <= 0.1) {
-         // Complete
+         await _showLiveMatchNotification(
+            match: match,
+            distanceInKm: distanceKm,
+            withBetNow: true,
+          );
+          // Complete
 
 
         } else {
