@@ -1,6 +1,11 @@
+import 'package:campus_picks/presentation/viewmodels/user_viewmodel.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/spacing.dart';
 import 'sign_up_screen.dart';
+import 'matches_view.dart';
+import 'package:campus_picks/data/services/auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -155,8 +160,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
-  void _handleSignIn() {
-    // Implement your sign-in logic here
+  void _handleSignIn() async {
+    try {
+      await authService.value.signInWithEmailAndPassword(email: _emailController.text, password: _passwordController.text);
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+
+    //var token = await authService.value.getToken();
+    //navigate to matches view
+
+    //Push replacement to avoid back navigation
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MatchesView()));
+  
     debugPrint('Signing in with email: ${_emailController.text}, password: ${_passwordController.text}');
   }
 
