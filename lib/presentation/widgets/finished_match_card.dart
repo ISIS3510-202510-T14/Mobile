@@ -34,7 +34,7 @@ class FinishedMatchCard extends BaseMatchCard {
       children: [
         // Tournament title
         Text(
-          match.tournament,
+          '${match.homeTeam} vs ${match.awayTeam}',
           textAlign: TextAlign.center,
           style: Theme.of(context)
               .textTheme
@@ -54,7 +54,7 @@ class FinishedMatchCard extends BaseMatchCard {
                 if (isTeamAWinner && !isTie) crownIcon,
                 const SizedBox(height: 4),
                 Image.asset(
-                  match.logoTeamA,
+                  "assets/images/team_beta.png",
                   width: 40,
                   height: 40,
                   errorBuilder: (context, error, stackTrace) =>
@@ -62,7 +62,7 @@ class FinishedMatchCard extends BaseMatchCard {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  match.teamA,
+                  match.homeTeam,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -93,7 +93,7 @@ class FinishedMatchCard extends BaseMatchCard {
                 if (isTeamBWinner && !isTie) crownIcon,
                 const SizedBox(height: 4),
                 Image.asset(
-                  match.logoTeamB,
+                  "assets/images/team_alpha.png",
                   width: 40,
                   height: 40,
                   errorBuilder: (context, error, stackTrace) =>
@@ -101,7 +101,7 @@ class FinishedMatchCard extends BaseMatchCard {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  match.teamB,
+                  match.awayTeam,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -123,11 +123,13 @@ class FinishedMatchCard extends BaseMatchCard {
         const SizedBox(height: 12),
 
         // Additional info (date, time, location, etc.)
+       // Texto de fecha y hora
         Text(
-          "Date: $dateString, Time: $timeString",
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+      "Date: ${match.startTime.day}/${match.startTime.month}/${match.startTime.year}, "
+      "Time: ${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}",
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
         // If you have location or other data, add it here
       ],
     );

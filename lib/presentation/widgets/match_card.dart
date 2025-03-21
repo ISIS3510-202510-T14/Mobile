@@ -1,4 +1,3 @@
-// lib/widgets/match_card.dart
 import 'package:flutter/material.dart';
 import '../../data/models/match_model.dart';
 import 'base_match_card.dart';
@@ -8,17 +7,18 @@ class MatchCard extends BaseMatchCard {
 
   @override
   Widget buildMatchContent(BuildContext context) {
-    // Format date/time strings
-    final dateString = "${match.dateTime.day}/${match.dateTime.month}/${match.dateTime.year}";
-    final timeString = "${match.dateTime.hour.toString().padLeft(2, '0')}:${match.dateTime.minute.toString().padLeft(2, '0')}";
+    // Usamos match.dateTime o match.startTime para formatear la fecha/hora
+    final date = match.dateTime; 
+    final dateString = "${date.day}/${date.month}/${date.year}";
+    final timeString = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+
 
     return Column(
-      // Center all content horizontally
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Centered tournament title
+        // Título del torneo centrado
         Text(
-          match.tournament,
+          '${match.homeTeam} vs ${match.awayTeam}',
           textAlign: TextAlign.center,
           style: Theme.of(context)
               .textTheme
@@ -27,80 +27,86 @@ class MatchCard extends BaseMatchCard {
         ),
         const SizedBox(height: 16),
 
-        // Row to show teams and "VS" in the center
+        // Row para mostrar equipos y "VS" en el centro, usando Expanded para evitar overflow
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Team A column (image on top, name below)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  match.logoTeamA,
-                  width: 50,
-                  height: 50,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_not_supported),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  match.teamA,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
+            // Columna para el equipo A
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    match.logoTeamA,
+                    width: 50,
+                    height: 50,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.image_not_supported),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    match.homeTeam,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
 
-            // "VS" text column
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'VS',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
+            // Widget fijo para el texto "VS"
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                'VS',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
 
-            // Team B column (image on top, name below)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  match.logoTeamB,
-                  width: 50,
-                  height: 50,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_not_supported),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  match.teamB,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
+            // Columna para el equipo B
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    match.logoTeamB,
+                    width: 50,
+                    height: 50,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.image_not_supported),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    match.awayTeam,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
 
         const SizedBox(height: 16),
 
-        // Centered "Bet Now" button
+        // Botón "Bet Now" centrado
         ElevatedButton(
           onPressed: () {
-            // Button action, e.g., navigate to details screen
+            // Acción del botón (por ejemplo, navegar a la pantalla de detalles)
           },
           child: const Text('Bet Now'),
         ),
 
         const SizedBox(height: 16),
 
-        // Date and time text below the button
+        // Texto de fecha y hora
         Text(
-          "Date: $dateString, Time: $timeString",
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+      "Date: ${match.startTime.day}/${match.startTime.month}/${match.startTime.year}, "
+      "Time: ${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}",
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
       ],
     );
   }
