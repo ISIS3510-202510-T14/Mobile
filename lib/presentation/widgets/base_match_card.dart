@@ -15,6 +15,11 @@ abstract class BaseMatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Common card structure
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Theme.of(context).colorScheme.primary
+, width: 2),
+      ),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: Theme.of(context).cardColor,
       elevation: 2,

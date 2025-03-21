@@ -54,7 +54,7 @@ class FinishedMatchCard extends BaseMatchCard {
                 if (isTeamAWinner && !isTie) crownIcon,
                 const SizedBox(height: 4),
                 Image.asset(
-                  "assets/images/team_beta.png",
+                  match.logoTeamA,
                   width: 40,
                   height: 40,
                   errorBuilder: (context, error, stackTrace) =>
@@ -93,7 +93,7 @@ class FinishedMatchCard extends BaseMatchCard {
                 if (isTeamBWinner && !isTie) crownIcon,
                 const SizedBox(height: 4),
                 Image.asset(
-                  "assets/images/team_alpha.png",
+                  match.logoTeamB,
                   width: 40,
                   height: 40,
                   errorBuilder: (context, error, stackTrace) =>

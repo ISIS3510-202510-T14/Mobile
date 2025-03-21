@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:campus_picks/data/models/location_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../data/models/match_model.dart';
@@ -66,8 +67,60 @@ class MatchesViewModel extends ChangeNotifier {
       throw Exception('Failed to fetch matches');
     }
   } catch (e, s) {
-    print('[fetchMatches] Ocurrió un error: $e');
-    print('[fetchMatches] StackTrace: $s');
+    LocationModel locationCityU = LocationModel(lat: 4.603350783618252, lng: -74.06721356441832);
+    Position userPosition = await _determinePosition();
+    LocationModel locationUser = LocationModel(lat: userPosition.latitude, lng: userPosition.longitude);
+    
+     final fallbackMatches = <MatchModel>[
+        MatchModel(
+          eventId: 'fallback-1',
+          acidEventId: 'fallback-acid1',
+          name: 'Fallback Match 1',
+          sport: 'soccer',
+          location: locationUser,
+          startTime: DateTime.now().add(const Duration(hours: 2)),
+          status: 'upcoming',
+          logoTeamA: 'assets/images/uniandes.png',
+          logoTeamB: 'assets/images/sabana.png',
+          providerId: 'fallback-provider',
+          homeTeam: 'Los Andes',
+          awayTeam: 'La sabana',
+        ),
+        MatchModel(
+          eventId: 'fallback-2',
+          acidEventId: 'fallback-acid2',
+          name: 'Fallback Match 2',
+          sport: 'football',
+          location: locationUser,
+          startTime: DateTime.now(),
+          status: 'live',
+          logoTeamA: 'assets/images/uniandes.png',
+          logoTeamB: 'assets/images/sabana.png',
+          providerId: 'fallback-provider',
+          homeTeam: 'Los Andes',
+          awayTeam: 'La sabana',
+        ),
+         MatchModel(
+          eventId: 'fallback-2',
+          acidEventId: 'fallback-acid2',
+          name: 'Fallback Match 2',
+          sport: 'basketball',
+          location: locationUser,
+          startTime: DateTime.now(),
+          status: 'finished',
+          logoTeamA: 'assets/images/uniandes.png',
+          logoTeamB: 'assets/images/sabana.png',
+          providerId: 'fallback-provider',
+          homeTeam: 'Los Andes',
+          awayTeam: 'La sabana',
+        ),
+      ];
+
+      liveMatches = fallbackMatches.where((m) => m.status.toLowerCase() == 'live').toList();
+      upcomingMatches = fallbackMatches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+      finishedMatches = fallbackMatches.where((m) => m.status.toLowerCase() == 'finished').toList();
+
+      notifyListeners();
     rethrow;
   }
 }
