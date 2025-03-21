@@ -6,6 +6,8 @@ import 'sign_up_screen.dart';
 import 'matches_view.dart';
 import 'package:campus_picks/data/services/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'home_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
