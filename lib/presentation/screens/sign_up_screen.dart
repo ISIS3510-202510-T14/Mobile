@@ -9,11 +9,33 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final TextEditingController usernameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  late TextEditingController usernameController = TextEditingController();
+  late TextEditingController emailController = TextEditingController();
+  late TextEditingController passwordController = TextEditingController();
+  late TextEditingController confirmPasswordController = TextEditingController();
   bool isPasswordVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    final userViewModel = Provider.of<UserViewModel>(context, listen: false);
+    
+    usernameController = TextEditingController(text: userViewModel.username);
+    emailController = TextEditingController(text: userViewModel.email);
+    passwordController = TextEditingController(text: userViewModel.password);
+    confirmPasswordController = TextEditingController(text: userViewModel.password);
+  }
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
 
   void _togglePasswordVisibility() {
     setState(() {
@@ -22,6 +44,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _signUp() {
+    final userViewModel = Provider.of<UserViewModel>(context, listen: false);
+
     String username = usernameController.text.trim();
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
@@ -36,7 +60,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    Navigator.pushReplacement(
+    // Update ViewModel with the current input
+    userViewModel.updateUserData(username: username, email: email, password: password);
+
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => ChangeNotifierProvider(create: (context) => UserViewModel(), child: CreateAccountScreen(username: username, email: email, password: password,)))
     );

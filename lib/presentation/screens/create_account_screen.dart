@@ -27,6 +27,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   String selectedGender = 'Male';
 
   void _submitForm() async {
+    UserViewModel userViewModel = Provider.of<UserViewModel>(context, listen: false);
+
+
     if (fullNameController.text.isEmpty || phoneNumberController.text.isEmpty || selectedAge == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
@@ -34,7 +37,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
-    Provider.of<UserViewModel>(context, listen: false).addUser(
+    userViewModel.addUser(
       widget.username,
       fullNameController.text,
       phoneNumberController.text,
@@ -51,7 +54,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       );
     }
 
-    Navigator.pop(context);
+    userViewModel.clearData();
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
   @override

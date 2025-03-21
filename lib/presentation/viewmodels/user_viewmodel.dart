@@ -3,6 +3,14 @@ import '../../data/models/user.dart';
 import '../../data/repositories/user_repository.dart';
 
 class UserViewModel extends ChangeNotifier {
+  String _username = '';
+  String _email = '';
+  String _password = '';
+
+  String get username => _username;
+  String get email => _email;
+  String get password => _password;
+
   final UserRepository _userRepository = UserRepository();
   List<User> _users = [];
   bool _isLoading = false;
@@ -35,5 +43,19 @@ class UserViewModel extends ChangeNotifier {
     } finally {
       _isLoading = false;
     }
+  }
+
+  void updateUserData({String? username, String? email, String? password}) {
+    if (username != null) _username = username;
+    if (email != null) _email = email;
+    if (password != null) _password = password;
+    notifyListeners();
+  }
+
+  void clearData() {
+    _username = '';
+    _email = '';
+    _password = '';
+    notifyListeners();
   }  
 }
