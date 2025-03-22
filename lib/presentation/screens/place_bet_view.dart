@@ -64,7 +64,7 @@ class _BetScreenState extends State<BetScreen> {
         title: Image.asset(selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.match.logoTeamA : widget.viewModel.match.logoTeamB, width: 50,height: 50,
                   errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
                   ),
-        content: Text('Are you sure you want to bet ¢${amount.toStringAsFixed(0)} on $selectedTeam witj odds of ${selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.oddsA : widget.viewModel.oddsB}?'),
+        content: Text('Are you sure you want to bet ¢${amount.toStringAsFixed(0)} on $selectedTeam with odds of ${selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.oddsA.toStringAsFixed(2) : widget.viewModel.oddsB.toStringAsFixed(2)}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

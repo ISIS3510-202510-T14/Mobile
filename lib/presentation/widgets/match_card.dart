@@ -1,6 +1,10 @@
+import 'package:campus_picks/data/repositories/auth_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../data/models/match_model.dart';
 import 'base_match_card.dart';
+import 'package:campus_picks/presentation/screens/place_bet_view.dart';
+import '../viewmodels/bet_viewmodel.dart';
 
 class MatchCard extends BaseMatchCard {
   const MatchCard({Key? key, required MatchModel match}) : super(key: key, match: match);
@@ -92,11 +96,38 @@ class MatchCard extends BaseMatchCard {
 
         // Botón "Bet Now" centrado
         ElevatedButton(
-          onPressed: () {
-            // Acción del botón (por ejemplo, navegar a la pantalla de detalles)
-          },
-          child: const Text('Bet Now'),
-        ),
+  onPressed: () {
+    AuthRepository authRepository = AuthRepository();
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user?.email != null) {
+      authRepository.readToken(user!.email!).then((token) {
+        if (token != null) {
+          print('Token: $token');
+          
+          BetViewModel betViewModel = BetViewModel(
+              match: match,
+              userId: token,
+          );
+
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => BetScreen(viewModel: betViewModel),
+              ),
+          );
+        } else {
+          print('Token not found');
+        }
+      }).catchError((e) {
+        print('Error reading token: $e');
+      });
+    } else {
+      print('User email is null');
+    }
+    // Acción del botón (por ejemplo, navegar a la pantalla de detalles)
+  },
+  child: const Text('Bet Now'),
+),
 
         const SizedBox(height: 16),
 

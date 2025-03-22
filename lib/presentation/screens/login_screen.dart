@@ -93,7 +93,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {}, // Implement Forgot Password logic
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("This functionality will be implemented soon"),
+                            duration: Duration(seconds: 2), // Controls how long the SnackBar stays visible
+                            behavior: SnackBarBehavior.floating, // Makes it appear as a small floating box
+                          ),
+                        );
+                      }, // Implement Forgot Password logic
                       child: Text(
                         'Forgot Password?',
                         style: textTheme.bodyMedium?.copyWith(color: Colors.white70),

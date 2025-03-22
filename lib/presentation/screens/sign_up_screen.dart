@@ -2,6 +2,8 @@ import 'package:campus_picks/presentation/viewmodels/user_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'create_account_screen.dart';
+import 'package:campus_picks/data/services/auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -21,7 +23,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
   }
 
-  void _signUp() {
+  void _signUp() async{
     String username = usernameController.text.trim();
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
@@ -34,6 +36,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (password != confirmPassword) {
       _showErrorDialog("Passwords do not match!");
       return;
+    }
+
+    try {
+      await authService.value.createUserWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
 
     Navigator.pushReplacement(
