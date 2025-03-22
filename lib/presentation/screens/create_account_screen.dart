@@ -1,8 +1,11 @@
-import 'package:campus_picks/data/services/auth.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+
+import 'package:campus_picks/data/repositories/auth_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../viewmodels/user_viewmodel.dart';
+import 'login_screen.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   final String username;
@@ -34,6 +37,38 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
+    final response = await http.post(
+      Uri.parse('http://localhost:8000/api/users'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': widget.email,
+        'phone': phoneNumberController.text,
+        'name': fullNameController.text,
+        'balance': 0.0,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      AuthRepository authRespository = AuthRepository();
+
+      final responseData = jsonDecode(response.body);
+      String userId = responseData['userId'];
+
+      await authRespository.writeToken(widget.email, userId);	
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('User created successfully: $userId')),
+      );
+
+      Navigator.pop(context);
+    
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to create user')),
+      );
+    }
+
+
     Provider.of<UserViewModel>(context, listen: false).addUser(
       widget.username,
       fullNameController.text,
@@ -43,15 +78,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       selectedGender,
     );
 
-    try {
-      await authService.value.createUserWithEmailAndPassword(email: widget.email, password: widget.password);
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
-    }
 
-    Navigator.pop(context);
   }
 
   @override
@@ -60,10 +87,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
           "Create An Account",
           style: TextStyle(color: Colors.white),

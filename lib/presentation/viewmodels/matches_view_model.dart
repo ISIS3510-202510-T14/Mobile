@@ -84,7 +84,7 @@ class MatchesViewModel extends ChangeNotifier {
           logoTeamB: 'assets/images/sabana.png',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
-          awayTeam: 'La sabana',
+          awayTeam: 'La Sabana',
         ),
         MatchModel(
           eventId: 'fallback-2',
@@ -98,7 +98,7 @@ class MatchesViewModel extends ChangeNotifier {
           logoTeamB: 'assets/images/sabana.png',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
-          awayTeam: 'La sabana',
+          awayTeam: 'La Sabana',
         ),
          MatchModel(
           eventId: 'fallback-2',
@@ -112,7 +112,7 @@ class MatchesViewModel extends ChangeNotifier {
           logoTeamB: 'assets/images/sabana.png',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
-          awayTeam: 'La sabana',
+          awayTeam: 'La Sabana',
         ),
       ];
 
