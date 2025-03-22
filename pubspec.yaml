@@ -29,3 +29,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+    - assets/images/logo_symbol.png
+    - assets/images/team_alpha.png
+    - assets/images/team_alpha1.png
+    - assets/images/team_beta.png
+    - assets/images/team_beta1.png
+
