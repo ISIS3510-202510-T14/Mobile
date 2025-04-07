@@ -1,11 +1,15 @@
 import 'dart:convert';
 import 'package:campus_picks/data/models/location_model.dart';
+import 'package:campus_picks/data/repositories/auth_repository.dart';
+import 'package:campus_picks/data/services/auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../data/models/match_model.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import '/main.dart' show flutterLocalNotificationsPlugin;
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 
 class MatchesViewModel extends ChangeNotifier {
@@ -253,7 +257,7 @@ Future<void> _showLiveMatchNotification({
       importance: Importance.max,
       priority: Priority.high,
       actions: <AndroidNotificationAction>[
-        AndroidNotificationAction('bet_now_action', 'Bet Now'),
+        AndroidNotificationAction('bet_now_action', 'Bet Now', showsUserInterface: true),
       ],
     );
   } else {
@@ -267,14 +271,66 @@ Future<void> _showLiveMatchNotification({
   }
   NotificationDetails details = NotificationDetails(android: androidDetails);
 
+  AuthRepository authRepository = AuthRepository();
+  String? userUID =  authService.value.currentUser?.uid;
+  
+
+  final payloadMap = {
+    'match': match.toJson(), // Serializa todo el objeto MatchModel
+    'userUID': userUID,      // Incluye el uid del usuario
+  };
+
+  print('Payload notification: $payloadMap'); // Debugging line
+
   await flutterLocalNotificationsPlugin.show(
     withBetNow ? 1 : 2, // Use different notification IDs
     withBetNow ? 'Live Event - Bet Now!' : 'Live Event Nearby',
     '${match.homeTeam} vs ${match.awayTeam}\nDistance: ${distanceInKm.toStringAsFixed(2)} km \n coords: ${match.location.lat}, ${match.location.lng} \n location: La caneca',
     details,
+    payload: jsonEncode(payloadMap), // Serializa el payload
     //payload: withBetNow ? 'bet_now_action' : null,
   );
 }
   
+  Future<void> sendUserLocation() async {
+  try {
+    // Obtener la posición actual
+    Position userPosition = await _determinePosition();
+
+    // Obtener el usuario autenticado y su uid
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('No hay usuario autenticado.');
+      return;
+    }
+    String uid = user.uid;
+
+    // Crear el timestamp actual en formato ISO 8601 (UTC)
+    String timestamp = DateTime.now().toUtc().toIso8601String();
+
+    // Construir el payload para la petición POST
+    Map<String, dynamic> payload = {
+      "userId": uid,
+      "lat": userPosition.latitude,
+      "lng": userPosition.longitude,
+      "timestamp": timestamp,
+    };
+
+    // Construir la URL de la API (en este caso, se usa http y localhost)
+    final uri = Uri.http('localhost:8000', '/api/location');
+
+    // Enviar la petición POST
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(payload),
+    );
+
+    print("Respuesta del servidor: ${response.statusCode} - ${response.body}");
+  } catch (e) {
+    print("Error al enviar la ubicación: $e");
+  }
+}
+
 
 }
