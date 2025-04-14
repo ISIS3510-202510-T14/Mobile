@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'matches_view.dart';
+import "recommended_bet_screen.dart"; // Asegúrate de importar tu pantalla de RecommendedBets
 
-// EJEMPLO DE BOTTOM NAV BAR CON 4 PESTAÑAS, SOLO LA PRIMERA ES FUNCIONAL
 class HomeNav extends StatefulWidget {
   const HomeNav({Key? key}) : super(key: key);
 
@@ -12,14 +12,13 @@ class HomeNav extends StatefulWidget {
 class _HomeNavState extends State<HomeNav> {
   int _currentIndex = 0;
 
-  // Solo la primera pantalla (Matches) es real, las demás se quedan con la misma vista
+  // Definimos las pantallas: MatchesView y RecommendedBetsScreen son navegables,
+  // mientras que las demás son placeholders.
   final List<Widget> _screens = [
-    const MatchesView(), // tu pantalla de partidos
-    // Las demás apuntan también a MatchesView o a un widget placeholder si quisieras
-    // pero en este ejemplo no se van a mostrar gracias al onTap
-    const MatchesView(),
-    const MatchesView(),
-    const MatchesView(),
+    const MatchesView(), // Índice 0: Matches
+    const RecommendedBetsScreen(), // Índice 1: Recommended Bets
+    const Placeholder(), // Índice 2: Marketplace (Coming soon)
+    const Placeholder(), // Índice 3: Profile (Coming soon)
   ];
 
   @override
@@ -31,34 +30,33 @@ class _HomeNavState extends State<HomeNav> {
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
         onTap: (int index) {
-          if (index == 0) {
-            // Solo la primera pestaña (Matches) navega
+          // Solo los índices 0 y 1 navegan a una pantalla real.
+          if (index == 0 || index == 1) {
             setState(() {
-              _currentIndex = 0;
+              _currentIndex = index;
             });
           } else {
-            // Las demás muestran un SnackBar con "Coming soon"
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Coming soon!'),
-                duration: Duration(seconds: 2),
-                backgroundColor: Theme.of(context).colorScheme.primary
+                content: const Text('Coming soon!'),
+                duration: const Duration(seconds: 2),
+                backgroundColor: Theme.of(context).colorScheme.primary,
               ),
             );
           }
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.adjust), // Ícono aproximado de "diana"
+            icon: Icon(Icons.sports_soccer),
             label: 'Matches',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.recommend), // Icono que represente Recommended Bets
+            label: 'Recommended',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag_outlined),
             label: 'Marketplace',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.star_border),
-            label: 'Favorites',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -69,5 +67,3 @@ class _HomeNavState extends State<HomeNav> {
     );
   }
 }
-
-

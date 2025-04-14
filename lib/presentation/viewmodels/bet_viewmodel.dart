@@ -6,6 +6,7 @@ class BetViewModel {
   final String userId;
   late double oddsA;
   late double oddsB;
+
   
   BetViewModel({required this.match, required this.userId}) {
     _generateRandomOdds();
@@ -16,4 +17,6 @@ class BetViewModel {
     oddsA = (rand.nextDouble() * 1.5) + 1.0;
     oddsB = (rand.nextDouble() * 1.5) + 1.0;
   }
+
+
 }

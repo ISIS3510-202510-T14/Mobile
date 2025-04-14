@@ -1,4 +1,3 @@
-// lib/widgets/finished_match_card.dart
 import 'package:flutter/material.dart';
 import '../../data/models/match_model.dart';
 import 'base_match_card.dart';
@@ -9,20 +8,17 @@ class FinishedMatchCard extends BaseMatchCard {
 
   @override
   Widget buildMatchContent(BuildContext context) {
-    // Format date/time
-    final dateString = "${match.dateTime.day}/${match.dateTime.month}/${match.dateTime.year}";
-    final timeString = "${match.dateTime.hour.toString().padLeft(2, '0')}:${match.dateTime.minute.toString().padLeft(2, '0')}";
-
-    // Determine scores
+    final dateString =
+        "${match.dateTime.day}/${match.dateTime.month}/${match.dateTime.year}";
+    final timeString =
+        "${match.dateTime.hour.toString().padLeft(2, '0')}:${match.dateTime.minute.toString().padLeft(2, '0')}";
     final scoreA = match.scoreTeamA ?? 0;
     final scoreB = match.scoreTeamB ?? 0;
 
-    // Check winner (if there's no tie)
     final isTie = scoreA == scoreB;
     final isTeamAWinner = scoreA > scoreB;
     final isTeamBWinner = scoreB > scoreA;
 
-    // Example crown icon (you can replace it with a custom icon)
     final crownIcon = Icon(
       Icons.emoji_events,
       color: Colors.yellow.shade600,
@@ -32,7 +28,6 @@ class FinishedMatchCard extends BaseMatchCard {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Tournament title
         Text(
           '${match.homeTeam} vs ${match.awayTeam}',
           textAlign: TextAlign.center,
@@ -42,75 +37,83 @@ class FinishedMatchCard extends BaseMatchCard {
               ?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-
-        // Row with logos, scores, and potential crown for the winner
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            // Team A column
-            Column(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // If Team A is winner, show a crown on top
-                if (isTeamAWinner && !isTie) crownIcon,
-                const SizedBox(height: 4),
-                Image.asset(
-                  match.logoTeamA,
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_not_supported),
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isTeamAWinner && !isTie) crownIcon,
+                      const SizedBox(height: 4),
+                      Image.asset(
+                        match.logoTeamA,
+                        width: 40,
+                        height: 40,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.image_not_supported),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        match.homeTeam,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  match.homeTeam,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                Container(
+                  width: 100,
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        scoreA.toString(),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Text(
+                        ':',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                      Text(
+                        scoreB.toString(),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isTeamBWinner && !isTie) crownIcon,
+                      const SizedBox(height: 4),
+                      Image.asset(
+                        match.logoTeamB,
+                        width: 40,
+                        height: 40,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.image_not_supported),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        match.awayTeam,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
-
-            // Score for Team A
-            Text(
-              scoreA.toString(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-
-            // Separator for scores
-            const Text(
-              ':',
-              style: TextStyle(fontSize: 18),
-            ),
-
-            // Score for Team B
-            Text(
-              scoreB.toString(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-
-            // Team B column
-            Column(
-              children: [
-                // If Team B is winner, show a crown on top
-                if (isTeamBWinner && !isTie) crownIcon,
-                const SizedBox(height: 4),
-                Image.asset(
-                  match.logoTeamB,
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_not_supported),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  match.awayTeam,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ],
+            );
+          },
         ),
         const SizedBox(height: 8),
-
-        // If tie, show something like "Empate" or "Draw"
         if (isTie)
           Text(
             '¡Draw!',
@@ -119,18 +122,25 @@ class FinishedMatchCard extends BaseMatchCard {
                 .bodyMedium
                 ?.copyWith(color: Colors.grey),
           ),
-
         const SizedBox(height: 12),
-
-        // Additional info (date, time, location, etc.)
-       // Texto de fecha y hora
-        Text(
-      "Date: ${match.startTime.day}/${match.startTime.month}/${match.startTime.year}, "
-      "Time: ${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}",
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.bodySmall,
-    ),
-        // If you have location or other data, add it here
+        // Información adicional: fecha, hora y venue debajo
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Date: $dateString, Time: $timeString",
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Venue: ${match.venue}",
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

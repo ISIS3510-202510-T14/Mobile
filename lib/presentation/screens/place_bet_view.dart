@@ -24,7 +24,13 @@ class _BetScreenState extends State<BetScreen> {
       "eventId": widget.viewModel.match.acidEventId,
       "stake": amount,
       "odds": odds,
+      "team": selectedTeam,
+      
     });
+    
+    print('Placing bet with body: $body');
+
+
 
     try {
       final response = await http.post(
@@ -38,6 +44,7 @@ class _BetScreenState extends State<BetScreen> {
         );
         Navigator.pop(context);
       } else {
+        print('failed body: $body');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to place bet')),
         );

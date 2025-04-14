@@ -31,8 +31,14 @@ class _MatchesViewState extends State<MatchesView>
     }).catchError((error) {
       _matchesViewModel.checkProximityAndNotify();
       
+
       
       print('Error al obtener los partidos: $error');
+    });
+
+    _matchesViewModel.sendUserLocation().then((_) {
+    }).catchError((error) {
+      print('Error al enviar la ubicación del usuario: $error');
     });
   }
 

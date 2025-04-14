@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:campus_picks/data/repositories/auth_repository.dart';
+import 'package:campus_picks/data/services/auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -37,10 +38,20 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
+    //final id_usuario = await authService.value.getToken();
+
+    final user_id = authService.value.currentUser?.uid;
+
+
+    
+        
+
+
     final response = await http.post(
       Uri.parse('http://localhost:8000/api/users'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
+        "user_id": user_id,
         'email': widget.email,
         'phone': phoneNumberController.text,
         'name': fullNameController.text,

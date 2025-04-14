@@ -97,47 +97,80 @@ class MatchCard extends BaseMatchCard {
         // Botón "Bet Now" centrado
         ElevatedButton(
   onPressed: () {
-    AuthRepository authRepository = AuthRepository();
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user?.email != null) {
-      authRepository.readToken(user!.email!).then((token) {
-        if (token != null) {
-          print('Token: $token');
-          
-          BetViewModel betViewModel = BetViewModel(
-              match: match,
-              userId: token,
-          );
+    // AuthRepository authRepository = AuthRepository();
+    // User? user = FirebaseAuth.instance.currentUser;
 
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => BetScreen(viewModel: betViewModel),
-              ),
-          );
-        } else {
-          print('Token not found');
-        }
-      }).catchError((e) {
-        print('Error reading token: $e');
-      });
+    // if (user?.email != null) {
+    //   authRepository.readToken(user!.email!).then((token) {
+    //     if (token != null) {
+    //       print('Token: $token');
+       
+          
+    //       BetViewModel betViewModel = BetViewModel(
+    //           match: match,
+    //           userId: token,
+
+    //       );
+
+
+          
+    //       Navigator.push(
+    //           context,
+    //           MaterialPageRoute(
+    //             builder: (context) => BetScreen(viewModel: betViewModel),
+    //           ),
+    //       );
+    //     } else {
+    //       print('Token not found');
+    //     }
+    //   }).catchError((e) {
+    //     print('Error reading token: $e');
+    //   });
+    // } else {
+    //   print('User email is null');
+    // }
+    // // Acción del botón (por ejemplo, navegar a la pantalla de detalles)
+
+    User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('UID: ${user.uid}');
+        
+        BetViewModel betViewModel = BetViewModel(
+          match: match,
+          userId: user.uid, // Aquí usas el uid en lugar del token
+        );
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BetScreen(viewModel: betViewModel),
+          ),
+        );
     } else {
-      print('User email is null');
-    }
-    // Acción del botón (por ejemplo, navegar a la pantalla de detalles)
+        print('No hay usuario autenticado');
+      }
   },
   child: const Text('Bet Now'),
 ),
 
         const SizedBox(height: 16),
-
-        // Texto de fecha y hora
-        Text(
-      "Date: ${match.startTime.day}/${match.startTime.month}/${match.startTime.year}, "
-      "Time: ${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}",
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.bodySmall,
-    ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Date: $dateString, Time: $timeString",
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Venue: ${match.venue}",
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
