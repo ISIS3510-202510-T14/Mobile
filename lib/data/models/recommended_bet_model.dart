@@ -24,4 +24,16 @@ class RecommendedBet {
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'recommendationId': recommendationId,
+      'eventId': eventId,
+      'betType': betType,
+      'description': description,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+
 }
