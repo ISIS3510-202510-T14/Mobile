@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../data/models/match_model.dart';
 import 'base_match_card.dart';
+import 'favorite_button.dart';
+import '../viewmodels/matches_view_model.dart';
+import 'package:provider/provider.dart';
+
 
 class FinishedMatchCard extends BaseMatchCard {
   const FinishedMatchCard({Key? key, required MatchModel match})
@@ -25,7 +29,8 @@ class FinishedMatchCard extends BaseMatchCard {
       size: 20,
     );
 
-    return Column(
+    // Contenido principal de la card
+    Widget content = Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
@@ -123,7 +128,6 @@ class FinishedMatchCard extends BaseMatchCard {
                 ?.copyWith(color: Colors.grey),
           ),
         const SizedBox(height: 12),
-        // Información adicional: fecha, hora y venue debajo
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Column(
@@ -142,6 +146,25 @@ class FinishedMatchCard extends BaseMatchCard {
           ),
         ),
       ],
+    );
+
+    // Se envuelve el contenido en un Stack e incluye el FavoriteButton
+    return Stack(
+      children: [
+        content,
+        Positioned(
+          top: 8,
+          right: 8,
+          child: FavoriteButton(
+            initialFavorite: match.isFavorite,
+            onFavoriteChanged: (isFav) {
+              // Aquí actualizas el estado en la base de datos local o en tu ViewModel
+              Provider.of<MatchesViewModel>(context, listen: false).toggleFavorite(match.eventId, isFav, match);
+              print("Match ${match.eventId} favorited: $isFav");
+            },
+          ),
+        ),
+      ], 
     );
   }
 }

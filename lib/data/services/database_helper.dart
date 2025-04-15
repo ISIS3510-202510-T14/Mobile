@@ -88,6 +88,15 @@ class DatabaseHelper {
   ''';
   await db.execute(recommendedBetTable);
 
+  // Dentro de _createDB(Database db, int version) después de las otras tablas:
+  const favoriteTable = '''
+    CREATE TABLE favorites (
+      userId TEXT NOT NULL,
+      eventId TEXT NOT NULL,
+      PRIMARY KEY (userId, eventId)
+    )
+  ''';
+  await db.execute(favoriteTable);
 
   }
 
@@ -161,6 +170,7 @@ Future<List<MatchModel>> getAllMatches() async {
 
   // Remueve la clave anidada "location"
   original.remove('location');
+  original.remove('isFavorite');
   
   // Agrega las columnas planas de ubicación que corresponden a la estructura de la tabla
   original['locationLat'] = location['lat'];

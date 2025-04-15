@@ -15,29 +15,21 @@ class _MatchesViewState extends State<MatchesView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late MatchesViewModel _matchesViewModel;
-
-  // Variable para el filtro de deporte; null significa que no hay filtro seleccionado.
   String? selectedSport;
+  bool _showOnlyFavorites = false; // Nuevo flag para filtro
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _matchesViewModel = MatchesViewModel();
-
-    _matchesViewModel.fetchMatches().then((_) {
-      // Una vez obtenidos, verificamos la proximidad y notificamos si corresponde
+    _matchesViewModel.fetchMatchesWithFavorites().then((_) {
       _matchesViewModel.checkProximityAndNotify();
     }).catchError((error) {
       _matchesViewModel.checkProximityAndNotify();
-      
-
-      
       print('Error al obtener los partidos: $error');
     });
-
-    _matchesViewModel.sendUserLocation().then((_) {
-    }).catchError((error) {
+    _matchesViewModel.sendUserLocation().then((_) {}).catchError((error) {
       print('Error al enviar la ubicación del usuario: $error');
     });
   }
@@ -56,31 +48,53 @@ class _MatchesViewState extends State<MatchesView>
       value: _matchesViewModel,
       child: Consumer<MatchesViewModel>(
         builder: (context, viewModel, child) {
-          // Si no hay filtro seleccionado, usamos todas las listas; de lo contrario filtramos.
-          final filteredLiveMatches = selectedSport == null
-              ? viewModel.liveMatches
-              : viewModel.liveMatches
-                  .where((m) => m.sport.toLowerCase() == selectedSport)
-                  .toList();
-          final filteredUpcomingMatches = selectedSport == null
-              ? viewModel.upcomingMatches
-              : viewModel.upcomingMatches
-                  .where((m) => m.sport.toLowerCase() == selectedSport)
-                  .toList();
-          final filteredFinishedMatches = selectedSport == null
-              ? viewModel.finishedMatches
-              : viewModel.finishedMatches
-                  .where((m) => m.sport.toLowerCase() == selectedSport)
-                  .toList();
+          // Filtro combinado: sport + solo favoritos si se ha activado el flag.
+          final filteredLiveMatches = viewModel.liveMatches.where((m) {
+            final sportMatches = selectedSport == null
+                ? true
+                : m.sport.toLowerCase() == selectedSport;
+            final favMatches = _showOnlyFavorites ? m.isFavorite : true;
+            return sportMatches && favMatches;
+          }).toList();
+
+          final filteredUpcomingMatches = viewModel.upcomingMatches.where((m) {
+            final sportMatches = selectedSport == null
+                ? true
+                : m.sport.toLowerCase() == selectedSport;
+            final favMatches = _showOnlyFavorites ? m.isFavorite : true;
+            return sportMatches && favMatches;
+          }).toList();
+
+          final filteredFinishedMatches = viewModel.finishedMatches.where((m) {
+            final sportMatches = selectedSport == null
+                ? true
+                : m.sport.toLowerCase() == selectedSport;
+            final favMatches = _showOnlyFavorites ? m.isFavorite : true;
+            return sportMatches && favMatches;
+          }).toList();
 
           return Scaffold(
             appBar: AppBar(
               title: const Text('Matches'),
+              actions: [
+                // Botón para activar/desactivar el filtro de favoritos
+                IconButton(
+                  icon: Icon(
+                    _showOnlyFavorites ? Icons.star : Icons.star_border,
+                  ),
+                  tooltip: 'Show Favorites Only',
+                  onPressed: () {
+                    setState(() {
+                      _showOnlyFavorites = !_showOnlyFavorites;
+                    });
+                  },
+                ),
+              ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(80),
                 child: Column(
                   children: [
-                    // Filtro de deporte usando ChoiceChips con iconos
+                    // Filtro por deporte con ChoiceChips
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Row(
@@ -124,7 +138,6 @@ class _MatchesViewState extends State<MatchesView>
                         ],
                       ),
                     ),
-                    // Pestañas
                     TabBar(
                       controller: _tabController,
                       tabs: const [
