@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:campus_picks/data/models/location_model.dart';
 import 'package:campus_picks/data/repositories/auth_repository.dart';
+import 'package:campus_picks/data/repositories/favorite_repository.dart';
+import 'package:campus_picks/data/repositories/match_repository.dart';
 import 'package:campus_picks/data/services/auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,10 +14,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 
 
+
 class MatchesViewModel extends ChangeNotifier {
   List<MatchModel> liveMatches = [];
   List<MatchModel> upcomingMatches = [];
   List<MatchModel> finishedMatches = [];
+  final FavoriteRepository _favoriteRepository = FavoriteRepository();
+  final MatchRepository _matchRepository = MatchRepository();
 
   /// Fetches events from the API endpoint using a GET request.
   /// Optional query parameters: [sport] and [startDate].
@@ -46,6 +51,7 @@ class MatchesViewModel extends ChangeNotifier {
         print('[fetchMatches] La clave "events" no existe en la respuesta');
         throw Exception('La respuesta no contiene "events".');
       }
+
 
       final events = data['events'] as List;
       print('[fetchMatches] Cantidad de eventos: ${events.length}');
@@ -331,6 +337,92 @@ Future<void> _showLiveMatchNotification({
     print("Error al enviar la ubicación: $e");
   }
 }
+
+Future<void> fetchMatchesWithFavorites({String? sport, DateTime? startDate}) async {
+  // Primero, obtenemos todos los partidos desde el backend.
+  try {
+    await fetchMatches(sport: sport, startDate: startDate);
+  } catch (e) {
+    print("Error al obtener partidos desde el backend: $e");
+
+  }
+  //await fetchMatches(sport: sport, startDate: startDate);
+
+  print("Partidos obtenidos desde el backend");
+
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    // Actualiza el flag a partir de la tabla de favoritos
+    final favoriteEventIds = await _favoriteRepository.getFavoritesForUser(user.uid);
+    print('Favorite Event IDs: $favoriteEventIds');
+
+    liveMatches.forEach((match) {
+      match.isFavorite = favoriteEventIds.contains(match.eventId);
+    });
+    upcomingMatches.forEach((match) {
+      match.isFavorite = favoriteEventIds.contains(match.eventId);
+    });
+    finishedMatches.forEach((match) {
+      match.isFavorite = favoriteEventIds.contains(match.eventId);
+    });
+
+    // Además, obtenemos los partidos favoritos completos guardados en local.
+    final favoriteMatchesLocal = await _favoriteRepository.getFavoriteMatches(user.uid);
+    
+    // Se unen las listas sin duplicar (se asume que eventId es único)
+    final Map<String, MatchModel> combinedMatches = {};
+    // Inserta los partidos obtenidos del backend
+    for (var match in [...liveMatches, ...upcomingMatches, ...finishedMatches]) {
+      combinedMatches[match.eventId] = match;
+    }
+    // Sobrescribe o agrega los favoritos locales (si están duplicados, se mantiene uno)
+    for (var favMatch in favoriteMatchesLocal) {
+      favMatch.isFavorite = true; // Asegúrate de marcarlo como favorito
+      combinedMatches[favMatch.eventId] = favMatch;
+    }
+    
+    // Ahora, reconstruye las listas, asignando según el status
+    final allMatches = combinedMatches.values.toList();
+    liveMatches = allMatches.where((m) => m.status.toLowerCase() == 'live').toList();
+    upcomingMatches = allMatches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+    finishedMatches = allMatches.where((m) => m.status.toLowerCase() == 'finished').toList();
+  }
+  
+  notifyListeners();
+}
+
+
+Future<void> toggleFavorite(String eventId, bool isFavorite, MatchModel match) async {
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user == null) return; // Manejar caso sin usuario
+  try {
+    if (isFavorite) {
+      // Persiste el partido como favorito (todos sus datos)
+      await _favoriteRepository.insertFavorite(user.uid, match.eventId);
+      // Aquí puedes guardar el objeto completo en la base de datos local si es necesario
+      await _matchRepository.addMatch(match); // Asumiendo que tienes un método para insertar el partido completo
+      print( "Partido favorito agregado: ${match.eventId}");
+    } else {
+      // Elimina el favorito (por ejemplo, usando el eventId)
+      await _favoriteRepository.deleteFavorite(user.uid, eventId);
+    }
+    // Actualiza la propiedad isFavorite en todas las listas donde aparezca el partido
+    for (final list in [liveMatches, upcomingMatches, finishedMatches]) {
+      for (final m in list) {
+        if (m.eventId == eventId) {
+          m.isFavorite = isFavorite;
+        }
+      }
+    }
+    notifyListeners();
+  } catch (e) {
+    print("Error toggling favorite for $eventId: $e");
+  }
+}
+
+
+
+
 
 
 }
