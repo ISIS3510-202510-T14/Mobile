@@ -11,6 +11,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import "data/models/match_model.dart";
 import 'dart:convert';
 import 'presentation/viewmodels/bet_viewmodel.dart';
+import 'data/services/connectivity_service.dart';
 
 
 // Global instance for local notifications
@@ -72,6 +73,10 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (_) => UserViewModel(),
           lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ConnectivityNotifier(),
+         
         ),
       ],
       child: const MyApp(),
