@@ -73,6 +73,8 @@ Map<String, dynamic> _convertDbRowToMatchJson(Map<String, dynamic> row) {
     'lat': mutableRow['locationLat'],
     'lng': mutableRow['locationLng'],
   };
+  mutableRow["home_logo"] = mutableRow["logoTeamA"];
+  mutableRow["away_logo"] = mutableRow["logoTeamB"];
   return mutableRow;
 }
 

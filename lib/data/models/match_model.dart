@@ -64,6 +64,8 @@ class MatchModel {
       venue = defaultVenues[Random().nextInt(defaultVenues.length)];
     }
 
+    
+
     return MatchModel(
       eventId: json['eventId'] ?? '',
       acidEventId: json['acidEventId'] ?? '',
@@ -82,6 +84,8 @@ class MatchModel {
       venue: venue,
       // Se lee isFavorite si viene, sino se asigna false
       isFavorite: json.containsKey('isFavorite') ? json['isFavorite'] as bool : false,
+      logoTeamA: json.containsKey("home_logo") ? json["home_logo"] : "assets/images/team_alpha.png",
+      logoTeamB: json.containsKey("away_logo") ? json["away_logo"] : "assets/images/team_beta.png",
     );
   }
 

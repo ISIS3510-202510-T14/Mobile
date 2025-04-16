@@ -7,6 +7,7 @@ import 'package:campus_picks/presentation/screens/place_bet_view.dart';
 import '../viewmodels/bet_viewmodel.dart';
 import '../viewmodels/matches_view_model.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 
 
@@ -16,7 +17,7 @@ class MatchCard extends BaseMatchCard {
 
   @override
   Widget buildMatchContent(BuildContext context) {
-    final date = match.dateTime;
+    final date = match.startTime;
     final dateString = "${date.day}/${date.month}/${date.year}";
     final timeString = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
 
@@ -45,13 +46,14 @@ class MatchCard extends BaseMatchCard {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        match.logoTeamA,
-                        width: 50,
-                        height: 50,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
+                        CachedNetworkImage(
+                          imageUrl: match.logoTeamA, // Se asume que es una URL.
+                          width: 40,
+                          height: 40,
+                          placeholder: (context, url) => const CircularProgressIndicator(),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.image_not_supported),
+                        ),
                       const SizedBox(height: 8),
                       Text(
                         match.homeTeam,
@@ -72,13 +74,14 @@ class MatchCard extends BaseMatchCard {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        match.logoTeamB,
-                        width: 50,
-                        height: 50,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
+                        CachedNetworkImage(
+                          imageUrl: match.logoTeamB, // Se asume que es una URL.
+                          width: 40,
+                          height: 40,
+                          placeholder: (context, url) => const CircularProgressIndicator(),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.image_not_supported),
+                        ),
                       const SizedBox(height: 8),
                       Text(
                         match.awayTeam,

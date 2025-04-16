@@ -99,8 +99,8 @@ class MatchesViewModel extends ChangeNotifier {
           location: locationUser,
           startTime: DateTime.now().add(const Duration(hours: 2)),
           status: 'upcoming',
-          logoTeamA: 'assets/images/uniandes.png',
-          logoTeamB: 'assets/images/sabana.png',
+          logoTeamA: 'https://www.ingebook.com/ib/pimg/Ingebook/00100_0000002134_UNIANDES_Transparente.png',
+          logoTeamB: 'https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/0017/5608/brand.gif?itok=Xj1Bk5oB',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
@@ -113,8 +113,8 @@ class MatchesViewModel extends ChangeNotifier {
           location: locationUser,
           startTime: DateTime.now(),
           status: 'live',
-          logoTeamA: 'assets/images/uniandes.png',
-          logoTeamB: 'assets/images/sabana.png',
+          logoTeamA: 'https://www.ingebook.com/ib/pimg/Ingebook/00100_0000002134_UNIANDES_Transparente.png',
+          logoTeamB: 'https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/0017/5608/brand.gif?itok=Xj1Bk5oB',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
@@ -127,8 +127,8 @@ class MatchesViewModel extends ChangeNotifier {
           location: locationUser,
           startTime: DateTime.now(),
           status: 'finished',
-          logoTeamA: 'assets/images/uniandes.png',
-          logoTeamB: 'assets/images/sabana.png',
+          logoTeamA: 'https://www.ingebook.com/ib/pimg/Ingebook/00100_0000002134_UNIANDES_Transparente.png',
+          logoTeamB: 'https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/0017/5608/brand.gif?itok=Xj1Bk5oB',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
@@ -366,6 +366,7 @@ Future<void> fetchMatchesWithFavorites({String? sport, DateTime? startDate}) asy
     // Actualiza el flag a partir de la tabla de favoritos
     final favoriteEventIds = await _favoriteRepository.getFavoritesForUser(user.uid);
     print('Favorite Event IDs: $favoriteEventIds');
+    
 
     liveMatches.forEach((match) {
       match.isFavorite = favoriteEventIds.contains(match.eventId);
@@ -380,6 +381,7 @@ Future<void> fetchMatchesWithFavorites({String? sport, DateTime? startDate}) asy
     // Además, obtenemos los partidos favoritos completos guardados en local.
     final favoriteMatchesLocal = await _favoriteRepository.getFavoriteMatches(user.uid);
     
+    
     // Se unen las listas sin duplicar (se asume que eventId es único)
     final Map<String, MatchModel> combinedMatches = {};
     // Inserta los partidos obtenidos del backend
@@ -390,6 +392,7 @@ Future<void> fetchMatchesWithFavorites({String? sport, DateTime? startDate}) asy
     for (var favMatch in favoriteMatchesLocal) {
       favMatch.isFavorite = true; // Asegúrate de marcarlo como favorito
       combinedMatches[favMatch.eventId] = favMatch;
+      print("Logos de los equipos: ${favMatch.logoTeamA} - ${favMatch.logoTeamB}");
     }
     
     // Ahora, reconstruye las listas, asignando según el status

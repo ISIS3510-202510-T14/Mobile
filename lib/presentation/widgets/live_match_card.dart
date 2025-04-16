@@ -7,6 +7,7 @@ import 'package:campus_picks/presentation/screens/place_bet_view.dart';
 import '../viewmodels/bet_viewmodel.dart';
 import '../viewmodels/matches_view_model.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 
 class LiveMatchCard extends BaseMatchCard {
@@ -65,13 +66,14 @@ class LiveMatchCard extends BaseMatchCard {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        match.logoTeamA,
-                        width: 40,
-                        height: 40,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
+                         CachedNetworkImage(
+                          imageUrl: match.logoTeamA, // Se asume que es una URL.
+                          width: 40,
+                          height: 40,
+                          placeholder: (context, url) => const CircularProgressIndicator(),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.image_not_supported),
+                        ),
                       const SizedBox(height: 4),
                       Text(
                         scoreA.toString(),
@@ -112,13 +114,14 @@ class LiveMatchCard extends BaseMatchCard {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        match.logoTeamB,
-                        width: 40,
-                        height: 40,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
+                         CachedNetworkImage(
+                          imageUrl: match.logoTeamB, // Se asume que es una URL.
+                          width: 40,
+                          height: 40,
+                          placeholder: (context, url) => const CircularProgressIndicator(),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.image_not_supported),
+                        ),
                       const SizedBox(height: 4),
                       Text(
                         scoreB.toString(),
