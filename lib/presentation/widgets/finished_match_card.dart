@@ -4,6 +4,7 @@ import 'base_match_card.dart';
 import 'favorite_button.dart';
 import '../viewmodels/matches_view_model.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 
 class FinishedMatchCard extends BaseMatchCard {
@@ -13,9 +14,9 @@ class FinishedMatchCard extends BaseMatchCard {
   @override
   Widget buildMatchContent(BuildContext context) {
     final dateString =
-        "${match.dateTime.day}/${match.dateTime.month}/${match.dateTime.year}";
+        "${match.startTime.day}/${match.startTime.month}/${match.startTime.year}";
     final timeString =
-        "${match.dateTime.hour.toString().padLeft(2, '0')}:${match.dateTime.minute.toString().padLeft(2, '0')}";
+        "${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}";
     final scoreA = match.scoreTeamA ?? 0;
     final scoreB = match.scoreTeamB ?? 0;
 
@@ -54,11 +55,12 @@ class FinishedMatchCard extends BaseMatchCard {
                     children: [
                       if (isTeamAWinner && !isTie) crownIcon,
                       const SizedBox(height: 4),
-                      Image.asset(
-                        match.logoTeamA,
+                      CachedNetworkImage(
+                        imageUrl: match.logoTeamA, // Se asume que es una URL.
                         width: 40,
                         height: 40,
-                        errorBuilder: (context, error, stackTrace) =>
+                        placeholder: (context, url) => const CircularProgressIndicator(),
+                        errorWidget: (context, url, error) =>
                             const Icon(Icons.image_not_supported),
                       ),
                       const SizedBox(height: 4),
@@ -98,13 +100,14 @@ class FinishedMatchCard extends BaseMatchCard {
                     children: [
                       if (isTeamBWinner && !isTie) crownIcon,
                       const SizedBox(height: 4),
-                      Image.asset(
-                        match.logoTeamB,
-                        width: 40,
-                        height: 40,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
+                      CachedNetworkImage(
+                          imageUrl: match.logoTeamB, // Se asume que es una URL.
+                          width: 40,
+                          height: 40,
+                          placeholder: (context, url) => const CircularProgressIndicator(),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.image_not_supported),
+                        ),
                       const SizedBox(height: 4),
                       Text(
                         match.awayTeam,
