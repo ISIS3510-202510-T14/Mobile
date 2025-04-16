@@ -18,6 +18,7 @@ class ConnectivityNotifier extends ChangeNotifier {
         _connectionStatus = ConnectivityResult.none;
       }
       notifyListeners();
+      print("Cambios en la conectividaaaaaaaaaaad");
     });
   }
   

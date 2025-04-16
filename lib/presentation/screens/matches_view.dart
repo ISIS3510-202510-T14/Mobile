@@ -16,6 +16,8 @@ class _MatchesViewState extends State<MatchesView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late MatchesViewModel _matchesViewModel;
+  late ConnectivityNotifier _conn;
+  bool _wasOffline = false;
   String? selectedSport;
   bool _showOnlyFavorites = false; // Nuevo flag para filtro
 
@@ -24,8 +26,10 @@ class _MatchesViewState extends State<MatchesView>
     super.initState();
     
     _tabController = TabController(length: 3, vsync: this);
-    final connectivityNotifier = Provider.of<ConnectivityNotifier>(context, listen: false);
-    _matchesViewModel = MatchesViewModel(connectivityNotifier: connectivityNotifier);
+
+    _conn = context.read<ConnectivityNotifier>();
+    _matchesViewModel = MatchesViewModel(connectivityNotifier: _conn);
+    _conn.addListener(_onConnectivityChanged);
 
     _matchesViewModel.fetchMatchesWithFavorites().then((_) {
       _matchesViewModel.checkProximityAndNotify();
@@ -36,10 +40,35 @@ class _MatchesViewState extends State<MatchesView>
     _matchesViewModel.sendUserLocation().then((_) {}).catchError((error) {
       print('Error al enviar la ubicación del usuario: $error');
     });
+
+    
   }
+ void _onConnectivityChanged() {
+    final offline = _conn.isOnline == false;
+
+    // mostrar snackbar SOLO al pasar de online → offline
+    if (offline && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Offline mode – showing cached data'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+
+    // si vuelve la conexión refrescamos partidos
+    if (!offline) {
+      _matchesViewModel.fetchMatchesWithFavorites();
+    }
+    // rebuild para pintar/ocultar la franja amarilla
+    if (mounted) setState(() {});
+    print("CallBack de matches view para cambios de conectividad");
+  }
+
 
   @override
   void dispose() {
+    _conn.removeListener(_onConnectivityChanged);
     _tabController.dispose();
     _matchesViewModel.dispose();
     super.dispose();
@@ -47,126 +76,141 @@ class _MatchesViewState extends State<MatchesView>
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    return ChangeNotifierProvider<MatchesViewModel>.value(
-      value: _matchesViewModel,
-      child: Consumer<MatchesViewModel>(
-        builder: (context, viewModel, child) {
-          // Filtro combinado: sport + solo favoritos si se ha activado el flag.
-          final filteredLiveMatches = viewModel.liveMatches.where((m) {
-            final sportMatches = selectedSport == null
-                ? true
-                : m.sport.toLowerCase() == selectedSport;
-            final favMatches = _showOnlyFavorites ? m.isFavorite : true;
-            return sportMatches && favMatches;
-          }).toList();
+  final primaryColor = Theme.of(context).colorScheme.primary;
 
-          final filteredUpcomingMatches = viewModel.upcomingMatches.where((m) {
-            final sportMatches = selectedSport == null
-                ? true
-                : m.sport.toLowerCase() == selectedSport;
-            final favMatches = _showOnlyFavorites ? m.isFavorite : true;
-            return sportMatches && favMatches;
-          }).toList();
+  // ← status de red (viene del ConnectivityNotifier inyectado en main)
+  final bool offline = _conn.isOnline == false;
 
-          final filteredFinishedMatches = viewModel.finishedMatches.where((m) {
-            final sportMatches = selectedSport == null
-                ? true
-                : m.sport.toLowerCase() == selectedSport;
-            final favMatches = _showOnlyFavorites ? m.isFavorite : true;
-            return sportMatches && favMatches;
-          }).toList();
+  return ChangeNotifierProvider<MatchesViewModel>.value(
+    value: _matchesViewModel,
+    child: Consumer<MatchesViewModel>(
+      builder: (context, viewModel, child) {
+        // ---------------- filtros ----------------
+        final filteredLiveMatches = viewModel.liveMatches.where((m) {
+          final sportOk = selectedSport == null ||
+              m.sport.toLowerCase() == selectedSport;
+          final favOk = !_showOnlyFavorites || m.isFavorite;
+          return sportOk && favOk;
+        }).toList();
 
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Matches'),
-              actions: [
-                // Botón para activar/desactivar el filtro de favoritos
-                IconButton(
-                  icon: Icon(
-                    _showOnlyFavorites ? Icons.star : Icons.star_border,
-                  ),
-                  tooltip: 'Show Favorites Only',
-                  onPressed: () {
-                    setState(() {
-                      _showOnlyFavorites = !_showOnlyFavorites;
-                    });
-                  },
+        final filteredUpcomingMatches = viewModel.upcomingMatches.where((m) {
+          final sportOk = selectedSport == null ||
+              m.sport.toLowerCase() == selectedSport;
+          final favOk = !_showOnlyFavorites || m.isFavorite;
+          return sportOk && favOk;
+        }).toList();
+
+        final filteredFinishedMatches = viewModel.finishedMatches.where((m) {
+          final sportOk = selectedSport == null ||
+              m.sport.toLowerCase() == selectedSport;
+          final favOk = !_showOnlyFavorites || m.isFavorite;
+          return sportOk && favOk;
+        }).toList();
+
+        // ---------------- UI ----------------
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Matches'),
+            actions: [
+              IconButton(
+                icon: Icon(
+                  _showOnlyFavorites ? Icons.star : Icons.star_border,
                 ),
-              ],
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(80),
-                child: Column(
-                  children: [
-                    // Filtro por deporte con ChoiceChips
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ChoiceChip(
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.sports_soccer, size: 20),
-                                SizedBox(width: 4),
-                                Text("Football"),
-                              ],
-                            ),
-                            selected: selectedSport == 'football',
-                            onSelected: (selected) {
-                              setState(() {
-                                selectedSport = selected ? 'football' : null;
-                              });
-                            },
-                            selectedColor: primaryColor,
-                          ),
-                          const SizedBox(width: 8),
-                          ChoiceChip(
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.sports_basketball, size: 20),
-                                SizedBox(width: 4),
-                                Text("Basketball"),
-                              ],
-                            ),
-                            selected: selectedSport == 'basketball',
-                            onSelected: (selected) {
-                              setState(() {
-                                selectedSport = selected ? 'basketball' : null;
-                              });
-                            },
-                            selectedColor: primaryColor,
-                          ),
-                        ],
+                tooltip: 'Show Favorites Only',
+                onPressed: () {
+                  setState(() => _showOnlyFavorites = !_showOnlyFavorites);
+                },
+              ),
+            ],
+            bottom: PreferredSize(
+              preferredSize: Size.fromHeight(offline ? 100 : 80),
+              child: Column(
+                children: [
+                  // ---------- banner OFF‑LINE ----------
+                  if (offline)
+                    Container(
+                      height: 20,
+                      width: double.infinity,
+                      color: primaryColor,
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'OFF‑LINE  •  using cached data',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    TabBar(
-                      controller: _tabController,
-                      tabs: const [
-                        Tab(text: 'Live'),
-                        Tab(text: 'Upcoming'),
-                        Tab(text: 'Finished'),
+
+                  // ---------- filtro de deporte ----------
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ChoiceChip(
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.sports_soccer, size: 20),
+                              SizedBox(width: 4),
+                              Text("Football"),
+                            ],
+                          ),
+                          selected: selectedSport == 'football',
+                          onSelected: (sel) {
+                            setState(() =>
+                                selectedSport = sel ? 'football' : null);
+                          },
+                          selectedColor: primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.sports_basketball, size: 20),
+                              SizedBox(width: 4),
+                              Text("Basketball"),
+                            ],
+                          ),
+                          selected: selectedSport == 'basketball',
+                          onSelected: (sel) {
+                            setState(() =>
+                                selectedSport = sel ? 'basketball' : null);
+                          },
+                          selectedColor: primaryColor,
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  // ---------- tabs ----------
+                  TabBar(
+                    controller: _tabController,
+                    tabs: const [
+                      Tab(text: 'Live'),
+                      Tab(text: 'Upcoming'),
+                      Tab(text: 'Finished'),
+                    ],
+                  ),
+                ],
               ),
             ),
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                LiveMatchesTab(liveMatches: filteredLiveMatches),
-                UpcomingMatchesTab(upcomingMatches: filteredUpcomingMatches),
-                FinishedMatchesTab(finishedMatches: filteredFinishedMatches),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+          ),
+
+          // ---------- contenido por pestañas ----------
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              LiveMatchesTab(liveMatches: filteredLiveMatches),
+              UpcomingMatchesTab(upcomingMatches: filteredUpcomingMatches),
+              FinishedMatchesTab(finishedMatches: filteredFinishedMatches),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
 }
 
 // Pestaña de partidos en vivo

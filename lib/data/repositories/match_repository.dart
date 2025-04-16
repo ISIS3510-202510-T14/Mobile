@@ -19,4 +19,10 @@ class MatchRepository {
   Future<void> removeMatch(String eventId) async {
     await _dbHelper.deleteMatch(eventId);
   }
+
+  Future<void> syncMatches(List<MatchModel> freshFromApi) async {
+  await _dbHelper.insertMatchesBatch(freshFromApi);
+}
+
+
 }
