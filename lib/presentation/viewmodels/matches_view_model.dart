@@ -4,6 +4,7 @@ import 'package:campus_picks/data/repositories/auth_repository.dart';
 import 'package:campus_picks/data/repositories/favorite_repository.dart';
 import 'package:campus_picks/data/repositories/match_repository.dart';
 import 'package:campus_picks/data/services/auth.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../data/models/match_model.dart';
@@ -11,6 +12,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import '/main.dart' show flutterLocalNotificationsPlugin;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../../../data/services/connectivity_service.dart';
 
 
 
@@ -21,6 +24,12 @@ class MatchesViewModel extends ChangeNotifier {
   List<MatchModel> finishedMatches = [];
   final FavoriteRepository _favoriteRepository = FavoriteRepository();
   final MatchRepository _matchRepository = MatchRepository();
+  final ConnectivityNotifier connectivityNotifier;
+
+  MatchesViewModel({required this.connectivityNotifier});
+  
+  // Métodos que usan connectivityNotifier...
+  
 
   /// Fetches events from the API endpoint using a GET request.
   /// Optional query parameters: [sport] and [startDate].
@@ -340,6 +349,8 @@ Future<void> _showLiveMatchNotification({
 
 Future<void> fetchMatchesWithFavorites({String? sport, DateTime? startDate}) async {
   // Primero, obtenemos todos los partidos desde el backend.
+  final status_network = await connectivityNotifier.statusString;
+  print("Estado de la red PRUEBAAAAAAAAAAAAAAAAAAAAAAAAA: $status_network");
   try {
     await fetchMatches(sport: sport, startDate: startDate);
   } catch (e) {

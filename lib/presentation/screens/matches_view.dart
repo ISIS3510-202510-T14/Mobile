@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/match_model.dart';
 import '../viewmodels/matches_view_model.dart';
 import '../widgets/match_card_factory.dart';
+import '../../data/services/connectivity_service.dart';
 
 class MatchesView extends StatefulWidget {
   const MatchesView({Key? key}) : super(key: key);
@@ -21,8 +22,11 @@ class _MatchesViewState extends State<MatchesView>
   @override
   void initState() {
     super.initState();
+    
     _tabController = TabController(length: 3, vsync: this);
-    _matchesViewModel = MatchesViewModel();
+    final connectivityNotifier = Provider.of<ConnectivityNotifier>(context, listen: false);
+    _matchesViewModel = MatchesViewModel(connectivityNotifier: connectivityNotifier);
+
     _matchesViewModel.fetchMatchesWithFavorites().then((_) {
       _matchesViewModel.checkProximityAndNotify();
     }).catchError((error) {
