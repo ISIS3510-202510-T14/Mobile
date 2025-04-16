@@ -161,6 +161,58 @@ Future<List<MatchModel>> getAllMatches() async {
     );
   }
 
+
+  /* ---------- NUEVO: filtra y recorta ---------- */
+Future<void> _pruneNonFavoriteMatches() async {
+  final db = await database;
+  // 1. id‑s de favoritos
+  final favIds = await db.query('favorites', columns: ['eventId']);
+  final favSet = favIds.map((e) => e['eventId'] as String).toSet();
+
+  // 2. seleccionar NO favoritos dentro de la ventana ±7 días
+  final candidates = await db.rawQuery('''
+    SELECT eventId, startTime
+    FROM matches
+    WHERE eventId NOT IN (${List.filled(favSet.length, '?').join(',')})
+      AND startTime BETWEEN datetime('now','-7 days') 
+                        AND datetime('now','+7 days')
+    ORDER BY ABS(julianday(startTime) - julianday('now')) ASC
+  ''', favSet.toList());
+
+  // 3. si sobran más de 100, borra los excedentes
+  const limit = 100;
+  if (candidates.length > limit) {
+    final toDelete = candidates.sublist(limit).map((m) => m['eventId']).toList();
+    await db.delete(
+      'matches',
+      where: 'eventId IN (${List.filled(toDelete.length, '?').join(',')})',
+      whereArgs: toDelete,
+    );
+  }
+}
+
+  /* ---------- modifica insert masivo ---------- */
+  Future<void> insertMatchesBatch(List<MatchModel> matches) async {
+    final db = await database;
+    final batch = db.batch();
+
+    final now = DateTime.now();
+    final weekBefore = now.subtract(const Duration(days: 7));
+    final weekAfter  = now.add(const Duration(days: 7));
+
+    for (final m in matches) {
+      // ignora si está fuera de ventana de una semana
+      if (m.startTime.isBefore(weekBefore) || m.startTime.isAfter(weekAfter)) continue;
+      batch.insert('matches', _prepareMatchForDb(m),
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    await batch.commit(noResult: true);
+
+    await _pruneNonFavoriteMatches();   // <-- poda tras la inserción
+  }
+
+
+
     Map<String, dynamic> _prepareMatchForDb(MatchModel match) {
   // Obtiene el map completo usando el toJson() original (con location anidado)
   final original = Map<String, dynamic>.from(match.toJson());
@@ -191,7 +243,11 @@ Map<String, dynamic> _convertDbRowToMatchJson(Map<String, dynamic> row) {
     'lat': mutableRow['locationLat'],
     'lng': mutableRow['locationLng'],
   };
-  return mutableRow;
+
+  mutableRow["home_logo"] = mutableRow["logoTeamA"] ?? "assets/images/team_alpha.png";
+  mutableRow["away_logo"] = mutableRow["logoTeamB"] ?? "assets/images/team_beta.png";
+
+   return mutableRow;
 }
 
 

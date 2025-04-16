@@ -347,63 +347,58 @@ Future<void> _showLiveMatchNotification({
   }
 }
 
-Future<void> fetchMatchesWithFavorites({String? sport, DateTime? startDate}) async {
-  // Primero, obtenemos todos los partidos desde el backend.
-  final status_network = await connectivityNotifier.statusString;
-  print("Estado de la red PRUEBAAAAAAAAAAAAAAAAAAAAAAAAA: $status_network");
-  try {
-    await fetchMatches(sport: sport, startDate: startDate);
-  } catch (e) {
-    print("Error al obtener partidos desde el backend: $e");
+Future<void> fetchMatchesWithFavorites({
+  String? sport,
+  DateTime? startDate,
+}) async {
+  final bool offline =
+      connectivityNotifier.connectionStatus == ConnectivityResult.none;
 
-  }
-  //await fetchMatches(sport: sport, startDate: startDate);
+  List<MatchModel> allMatches;
 
-  print("Partidos obtenidos desde el backend");
+  if (offline) {
+    // 1) ***SIN RED → solo BD local***
+    allMatches = await _matchRepository.fetchMatches();
+  } else {
+    // 2) ***CON RED → backend + sincronizar BD local***
+    try {
+      await fetchMatches(sport: sport, startDate: startDate);      // baja los datos
+      allMatches = [...liveMatches, ...upcomingMatches, ...finishedMatches];
 
-  User? user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-    // Actualiza el flag a partir de la tabla de favoritos
-    final favoriteEventIds = await _favoriteRepository.getFavoritesForUser(user.uid);
-    print('Favorite Event IDs: $favoriteEventIds');
-    
-
-    liveMatches.forEach((match) {
-      match.isFavorite = favoriteEventIds.contains(match.eventId);
-    });
-    upcomingMatches.forEach((match) {
-      match.isFavorite = favoriteEventIds.contains(match.eventId);
-    });
-    finishedMatches.forEach((match) {
-      match.isFavorite = favoriteEventIds.contains(match.eventId);
-    });
-
-    // Además, obtenemos los partidos favoritos completos guardados en local.
-    final favoriteMatchesLocal = await _favoriteRepository.getFavoriteMatches(user.uid);
-    
-    
-    // Se unen las listas sin duplicar (se asume que eventId es único)
-    final Map<String, MatchModel> combinedMatches = {};
-    // Inserta los partidos obtenidos del backend
-    for (var match in [...liveMatches, ...upcomingMatches, ...finishedMatches]) {
-      combinedMatches[match.eventId] = match;
+      // // guarda/actualiza cada partido en SQLite
+      // for (final m in allMatches) {
+      //   await _matchRepository.addMatch(m); // usa ON CONFLICT REPLACE en DBHelper
+      // }
+      await _matchRepository.syncMatches(allMatches); // usa ON CONFLICT REPLACE en DBHelper
+    } catch (_) {
+      // Si la petición falló (servidor caído, timeout, etc.) leo local
+      allMatches = await _matchRepository.fetchMatches();
     }
-    // Sobrescribe o agrega los favoritos locales (si están duplicados, se mantiene uno)
-    for (var favMatch in favoriteMatchesLocal) {
-      favMatch.isFavorite = true; // Asegúrate de marcarlo como favorito
-      combinedMatches[favMatch.eventId] = favMatch;
-      print("Logos de los equipos: ${favMatch.logoTeamA} - ${favMatch.logoTeamB}");
-    }
-    
-    // Ahora, reconstruye las listas, asignando según el status
-    final allMatches = combinedMatches.values.toList();
-    liveMatches = allMatches.where((m) => m.status.toLowerCase() == 'live').toList();
-    upcomingMatches = allMatches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
-    finishedMatches = allMatches.where((m) => m.status.toLowerCase() == 'finished').toList();
   }
-  
+
+  // ---------- marcar favoritos ----------
+  final user = FirebaseAuth.instance.currentUser;
+  final favIds = user == null
+      ? <String>[]
+      : await _favoriteRepository.getFavoritesForUser(user.uid);
+
+  for (var m in allMatches) {
+    m.isFavorite = favIds.contains(m.eventId);
+  }
+
+  //final favoriteMatches = await _favoriteRepository.getFavoriteMatches(user!.uid);
+
+
+
+
+  // ---------- repartir por status ----------
+  liveMatches     = allMatches.where((m) => m.status == 'live').toList();
+  upcomingMatches = allMatches.where((m) => m.status == 'upcoming').toList();
+  finishedMatches = allMatches.where((m) => m.status == 'finished').toList();
+
   notifyListeners();
 }
+
 
 
 Future<void> toggleFavorite(String eventId, bool isFavorite, MatchModel match) async {
