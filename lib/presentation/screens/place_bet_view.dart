@@ -1,3 +1,4 @@
+import 'package:campus_picks/theme/spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -13,7 +14,8 @@ class BetScreen extends StatefulWidget {
 }
 
 class _BetScreenState extends State<BetScreen> {
-  final TextEditingController _amountController = TextEditingController(text: '0');
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _amountController = TextEditingController();
   String? selectedTeam;
   
   Future<void> _placeBet(double amount) async {
@@ -40,30 +42,34 @@ class _BetScreenState extends State<BetScreen> {
       );
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bet placed successfully')),
+          SnackBar(
+            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+            content: const Text('Bet placed successfully'),
+          ),
         );
         Navigator.pop(context);
       } else {
         print('failed body: $body');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to place bet')),
+          SnackBar(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            content: const Text('Failed to place bet'),
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+      SnackBar(
+          backgroundColor: Theme.of(context).colorScheme.error,
+          content: Text('Error: $e'),
+        ),
       );
     }
   }
 
   void _confirmBet() {
-    final amount = double.tryParse(_amountController.text);
-    if (amount == null || amount <= 0 ) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid bet amount')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
+    final amount = double.parse(_amountController.text);
     
     showDialog(
       context: context,
@@ -91,91 +97,113 @@ class _BetScreenState extends State<BetScreen> {
   
   @override
   Widget build(BuildContext context) {
-    final vm = widget.viewModel;
+    final theme   = Theme.of(context);
+    final colors  = theme.colorScheme;
+    final vm      = widget.viewModel;
+    final spacing = const EdgeInsets.all(AppSpacing.l);
+
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+      appBar: AppBar(title: const Text('Place bet')),
+      body: SingleChildScrollView(
+        padding: spacing,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ----- amount input -----
+              TextFormField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.displayLarge!.copyWith(color: colors.primary),
+                decoration: const InputDecoration(
+                  hintText: '¢0',
+                  border: InputBorder.none,
+                ),
+                validator: (value) {
+                  final v = double.tryParse(value ?? '');
+                  if (v == null || v <= 0) return 'Enter a positive amount';
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              // ----- team selector -----
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: AppSpacing.s,
+                children: [
+                  _teamChip(
+                    team: vm.match.homeTeam,
+                    odds: vm.oddsA,
+                    selected: selectedTeam == vm.match.homeTeam,
+                    onTap: () => setState(() => selectedTeam = vm.match.homeTeam),
+                    selectedColor: colors.secondary,
+                  ),
+                  _teamChip(
+                    team: vm.match.awayTeam,
+                    odds: vm.oddsB,
+                    selected: selectedTeam == vm.match.awayTeam,
+                    onTap: () => setState(() => selectedTeam = vm.match.awayTeam),
+                    selectedColor: colors.tertiary,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSpacing.xl),
+
+              // ----- submit -----
+              ElevatedButton(
+                onPressed: selectedTeam == null ? null : _confirmBet,
+                child: const Text('Submit'),
+              ),
+            ],
+          ),
         ),
-        title: const Text('Input amount', style: TextStyle(color: Colors.white)),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 10),
-          TextField(
-            controller: _amountController,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.yellow, fontSize: 32, fontWeight: FontWeight.bold),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Column(
-                children: [
-                  Image.asset(vm.match.logoTeamA, width: 50, height: 50,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported)),
-                  Text(vm.match.homeTeam, style: const TextStyle(color: Colors.white))
-                ],
-              ),
-              const SizedBox(width: 20),
-              Column(
-                children: [
-                  Image.asset(vm.match.logoTeamB, width: 50, height: 50,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported)),
-                  Text(vm.match.awayTeam, style: const TextStyle(color: Colors.white))
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 10,
-            children: [
-              ChoiceChip(
-                label: SizedBox(
-                  width: 120,
-                  child: Text(
-                    '${vm.match.homeTeam} (${vm.oddsA.toStringAsFixed(2)})',
-                    style: const TextStyle(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                selected: selectedTeam == vm.match.homeTeam,
-                onSelected: (selected) => setState(() => selectedTeam = vm.match.homeTeam),
-                selectedColor: Colors.pink,
-              ),
-              ChoiceChip(
-                label: SizedBox(
-                  width: 120,
-                  child: Text(
-                    '${vm.match.awayTeam} (${vm.oddsB.toStringAsFixed(2)})',
-                    style: const TextStyle(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                selected: selectedTeam == vm.match.awayTeam,
-                onSelected: (selected) => setState(() => selectedTeam = vm.match.awayTeam),
-                selectedColor: Colors.green,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15)),
-            onPressed: selectedTeam == null ? null : _confirmBet,
-            child: const Text('Submit', style: TextStyle(color: Colors.white, fontSize: 18)),
-          ),
-        ],
       ),
     );
   }
+
+  Widget _teamChip({
+    required String  team,
+    required double  odds,
+    required bool    selected,
+    required VoidCallback onTap,
+    required Color   selectedColor,
+  }) {
+    final theme  = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return ChoiceChip(
+      selected: selected,
+      onSelected: (_) => onTap(),
+      selectedColor: selectedColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      label: SizedBox(
+        width: 120,                        // fixed width keeps all chips equal
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              team,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              odds.toStringAsFixed(2),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 }

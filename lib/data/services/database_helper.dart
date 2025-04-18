@@ -27,8 +27,14 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: (db, oldV, newV) async {
+        if (oldV < 2) {
+          await db.execute('ALTER TABLE matches ADD COLUMN oddsA REAL DEFAULT 1.0;');
+          await db.execute('ALTER TABLE matches ADD COLUMN oddsB REAL DEFAULT 1.0;');
+        }
+      },
     );
   }
 
@@ -56,7 +62,9 @@ class DatabaseHelper {
         away_score INTEGER,
         minute INTEGER,
         dateTime TEXT,
-        venue TEXT
+        venue TEXT,
+        oddsA REAL,      
+        oddsB REAL       
       )
     ''';
     await db.execute(matchTable);
@@ -213,41 +221,30 @@ Future<void> _pruneNonFavoriteMatches() async {
 
 
 
-    Map<String, dynamic> _prepareMatchForDb(MatchModel match) {
-  // Obtiene el map completo usando el toJson() original (con location anidado)
+Map<String, dynamic> _prepareMatchForDb(MatchModel match) {
   final original = Map<String, dynamic>.from(match.toJson());
-  // Extrae el objeto anidado "location"
-  final location = original['location'];
-  
-
-  // Remueve la clave anidada "location"
   original.remove('location');
   original.remove('isFavorite');
-  
-  // Agrega las columnas planas de ubicación que corresponden a la estructura de la tabla
-  original['locationLat'] = location['lat'];
-  original['locationLng'] = location['lng'];
-
-
-  
-  // (Opcional) Si existen otros campos que necesiten conversión, puedes manejarlos aquí
-  
+  // flatten location…
+  original['locationLat'] = match.location.lat;
+  original['locationLng'] = match.location.lng;
+  // add odds
+  original['oddsA'] = match.oddsA;
+  original['oddsB'] = match.oddsB;
   return original;
 }
 
 Map<String, dynamic> _convertDbRowToMatchJson(Map<String, dynamic> row) {
-  // Crear una copia mutable del mapa
   final mutableRow = Map<String, dynamic>.from(row);
-  // Añadir el objeto nested 'location' a partir de los campos planos
   mutableRow['location'] = {
     'lat': mutableRow['locationLat'],
     'lng': mutableRow['locationLng'],
   };
-
-  mutableRow["home_logo"] = mutableRow["logoTeamA"] ?? "assets/images/team_alpha.png";
-  mutableRow["away_logo"] = mutableRow["logoTeamB"] ?? "assets/images/team_beta.png";
-
-   return mutableRow;
+  mutableRow['oddsA'] = row['oddsA'];
+  mutableRow['oddsB'] = row['oddsB'];
+  mutableRow['home_logo'] = mutableRow['logoTeamA'];
+  mutableRow['away_logo'] = mutableRow['logoTeamB'];
+  return mutableRow;
 }
 
 
