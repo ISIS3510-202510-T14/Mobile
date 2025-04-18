@@ -1,3 +1,5 @@
+import 'package:campus_picks/data/models/bet_model.dart';
+import 'package:campus_picks/data/repositories/bet_repository.dart';
 import 'package:campus_picks/theme/spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +43,21 @@ class _BetScreenState extends State<BetScreen> {
         body: body,
       );
       if (response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+          final repo = BetRepository();
+          await repo.insertBet(
+            BetModel(
+              betId:   data['betId'],
+              userId:  widget.viewModel.userId,
+              eventId: widget.viewModel.match.eventId,
+              team:    selectedTeam!,
+              stake:   amount,
+              odds:    odds,
+              status:  'placed',
+              createdAt: DateTime.parse(data['timestamp']),
+              updatedAt: DateTime.parse(data['timestamp']),
+            ),
+          );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Theme.of(context).colorScheme.secondaryContainer,

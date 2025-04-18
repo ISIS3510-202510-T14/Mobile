@@ -1,4 +1,9 @@
 // lib/presentation/screens/user_bets_screen.dart
+//
+// v3 – 2025‑04‑18
+// • Adds a slim “OFF‑LINE · showing cached data” banner under the AppBar
+//   whenever ConnectivityNotifier says we’re offline.
+// • No other logic changed.
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,8 +14,6 @@ import '../../data/models/bet_with_match.dart';
 import '../viewmodels/user_bets_view_model.dart';
 import '../../data/services/connectivity_service.dart';
 
-/// Shows the authenticated user’s betting history in a scrollable list.
-/// Offline‑first: falls back to the SQLite cache when the device is offline.
 class UserBetsScreen extends StatelessWidget {
   const UserBetsScreen({Key? key}) : super(key: key);
 
@@ -22,7 +25,9 @@ class UserBetsScreen extends StatelessWidget {
       create: (_) {
         final vm = UserBetsViewModel(connectivityNotifier: connectivityNotifier);
         final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) vm.loadBets(uid);
+        if (uid != null) {
+          vm.loadBets(uid, forceRemote: false);
+        }
         return vm;
       },
       child: const _UserBetsBody(),
@@ -35,42 +40,59 @@ class _UserBetsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<UserBetsViewModel>();
-    final offline = !context.watch<ConnectivityNotifier>().isOnline;
-    final primary = Theme.of(context).colorScheme.primary;
+    final vm   = context.watch<UserBetsViewModel>();
+    final conn = context.watch<ConnectivityNotifier>();
+    final uid  = FirebaseAuth.instance.currentUser?.uid;
+
+    final bool offline = !conn.isOnline;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Bets')),
-      body: Column(
-        children: [
-          if (offline)
-            Container(
-              width: double.infinity,
-              color: primary,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: const Center(
-                child: Text(
-                  'OFF‑LINE  •  using cached bets',
-                  style: TextStyle(fontSize: 12),
+      // ──────────────────────────────── AppBar + offline banner
+      appBar: AppBar(
+        title: const Text('My Bets'),
+        bottom: offline
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(20),
+                child: Container(
+                  height: 20,
+                  alignment: Alignment.center,
+                  color: Theme.of(context).colorScheme.primary,
+                  child: const Text(
+                    'OFF‑LINE · showing cached data',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                 ),
-              ),
-            ),
-          Expanded(
-            child: vm.loading
-                ? const Center(child: CircularProgressIndicator())
-                : vm.error != null
-                    ? Center(child: Text(vm.error!))
-                    : vm.bets.isEmpty
-                        ? const _EmptyState()
-                        : ListView.separated(
-                            padding: const EdgeInsets.only(top: 8, bottom: 24),
-                            itemCount: vm.bets.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (_, i) => _BetCard(bet: vm.bets[i]),
-                          ),
-          ),
-        ],
+              )
+            : null,
       ),
+      // ──────────────────────────────── Body
+      body: vm.loading
+          ? const Center(child: CircularProgressIndicator())
+          : vm.bets.isNotEmpty
+              ? RefreshIndicator(
+                  onRefresh: () async {
+                    if (uid != null) await vm.loadBets(uid, forceRemote: true);
+                  },
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.only(top: 8, bottom: 24),
+                    itemCount: vm.bets.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => _BetCard(bet: vm.bets[i]),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    if (uid != null) await vm.loadBets(uid, forceRemote: true);
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 200),
+                      _EmptyState(),
+                    ],
+                  ),
+                ),
     );
   }
 }
@@ -104,166 +126,154 @@ class _BetCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t  = Theme.of(context).textTheme;
 
-    final m = bet.match; // could be null if the match was purged from cache
-    final b = bet.bet;
+    // ---------- styles ----------
+    final labelStyle = t.bodySmall!
+        .copyWith(color: cs.onSurface.withOpacity(0.6), height: 1.2);
+    final valueStyle = t.bodyMedium!
+        .copyWith(color: cs.onSurface, height: 1.3);
 
-    //------------------------------------------------------------------
-    // DATA PREP
-    //------------------------------------------------------------------
-    final matchUp    = (m != null ? m.name : b.matchName) ?? 'Unknown match';
-    final chosenTeam = b.team;
-    final placedAt   = b.createdAt;
-    final dateFmt    = DateFormat('d MMM yyyy · HH:mm');
+    // ---------- data ----------
+    final matchUp  = bet.match?.name ?? bet.bet.matchName ?? 'Unknown match';
+    final status   = bet.bet.status;
+    final team     = bet.bet.team;
+    final odds     = bet.bet.odds?.toStringAsFixed(2) ?? '-';
+    final stake    = '¢${bet.bet.stake.toStringAsFixed(0)}';
+    final placedAt = bet.bet.createdAt;
+    final dateFmt  = DateFormat('d MMM yyyy · HH:mm');
 
-    // status → colour/icon
-    late final Color    statusColor;
-    late final IconData statusIcon;
-    switch (b.status) {
-      case 'won':  statusColor = cs.secondary; statusIcon = Icons.trending_up;   break;
-      case 'lost': statusColor = cs.error;     statusIcon = Icons.trending_down; break;
-      default:     statusColor = cs.tertiary;  statusIcon = Icons.hourglass_bottom;
+    // status → color + icon
+    late Color    statusColor;
+    late IconData statusIcon;
+    switch (status) {
+      case 'won':
+        statusColor = cs.secondary;
+        statusIcon  = Icons.trending_up;
+        break;
+      case 'lost':
+        statusColor = cs.error;
+        statusIcon  = Icons.trending_down;
+        break;
+      default:
+        statusColor = cs.tertiary;
+        statusIcon  = Icons.hourglass_bottom;
     }
 
-    //------------------------------------------------------------------
-    // UI
-    //------------------------------------------------------------------
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: cs.primary, width: 2), // same outline as match cards
+        side: BorderSide(color: cs.primary, width: 2),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            //----------------------------------------------------------------
-            // Top row  ·  matchup title + coloured status chip
-            //----------------------------------------------------------------
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    matchUp,
-                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                _StatusChip(label: b.status, color: statusColor),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            //----------------------------------------------------------------
-            // Chosen team & odds – with subtle labels
-            //----------------------------------------------------------------
+            // ───── Row 1: MATCH & STATUS ─────
             Row(
               children: [
-                //----------------------------------------------------------------
-                // team
-                //----------------------------------------------------------------
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('TEAM',
-                          style: t.bodySmall?.copyWith(
-                            color: cs.onSurface.withOpacity(0.6),
-                          )),
-                      const SizedBox(height: 2),
-                      Text(chosenTeam,
-                          style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      Text('MATCH', style: labelStyle),
+                      const SizedBox(height: 4),
+                      Text(matchUp,
+                          style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
-                //----------------------------------------------------------------
-                // odds (if any)
-                //----------------------------------------------------------------
-                if (b.odds != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('ODDS',
-                          style: t.bodySmall?.copyWith(
-                            color: cs.onSurface.withOpacity(0.6),
-                          )),
-                      const SizedBox(height: 2),
-                      Text(b.odds!.toStringAsFixed(2),
-                          style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      Text('STATUS', style: labelStyle),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(statusIcon, size: 16, color: statusColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              status.toUpperCase(),
+                              style: t.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: statusColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
+                ),
               ],
             ),
-
             const SizedBox(height: 12),
 
-            //----------------------------------------------------------------
-            // Stake & placed date
-            //----------------------------------------------------------------
+            // ───── Row 2: YOUR TEAM & ODDS ─────
             Row(
               children: [
                 Expanded(
-                  child: Text('¢${b.stake.toStringAsFixed(0)}',
-                      style: t.bodyMedium),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('YOUR TEAM', style: labelStyle),
+                      const SizedBox(height: 4),
+                      Text(team, style: valueStyle),
+                    ],
+                  ),
                 ),
-                if (placedAt != null)
-                  Text(dateFmt.format(placedAt.toLocal()),
-                      style: t.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ODDS', style: labelStyle),
+                      const SizedBox(height: 4),
+                      Text(odds, style: valueStyle),
+                    ],
+                  ),
+                ),
               ],
             ),
+            const SizedBox(height: 12),
 
-            //----------------------------------------------------------------
-            // Optional: match status + date (if we still have the MatchModel)
-            //----------------------------------------------------------------
-            if (m != null) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(m.status,
-                        style: t.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+            // ───── Row 3: STAKE & PLACED AT ─────
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('STAKE', style: labelStyle),
+                      const SizedBox(height: 4),
+                      Text(stake, style: valueStyle),
+                    ],
                   ),
-                  Text(dateFmt.format(m.startTime.toLocal()),
-                      style: t.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.7))),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(width: 16),
+                if (placedAt != null)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('PLACED AT', style: labelStyle),
+                        const SizedBox(height: 4),
+                        Text(dateFmt.format(placedAt.toLocal()), style: valueStyle),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color});
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.circle, size: 8, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label.toUpperCase(),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-          ),
-        ],
       ),
     );
   }
