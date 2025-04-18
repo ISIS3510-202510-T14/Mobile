@@ -7,7 +7,7 @@ import 'matches_view.dart';
 import 'package:campus_picks/data/services/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
-
+import 'package:campus_picks/data/services/backend_api.dart';   // ← NEW
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,7 +16,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -66,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 children: [
                   // Logo
                   Image.asset(
-                    'assets/images/logo_symbol.png', // Update with actual logo path
+                    'assets/images/logo_symbol.png',
                     height: 100,
                   ),
                   const SizedBox(height: 32),
@@ -96,15 +97,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("This functionality will be implemented soon"),
-                            duration: Duration(seconds: 2), // Controls how long the SnackBar stays visible
-                            behavior: SnackBarBehavior.floating, // Makes it appear as a small floating box
+                            content: Text(
+                                "This functionality will be implemented soon"),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
                           ),
                         );
-                      }, // Implement Forgot Password logic
+                      },
                       child: Text(
                         'Forgot Password?',
-                        style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                        style:
+                            textTheme.bodyMedium?.copyWith(color: Colors.white70),
                       ),
                     ),
                   ),
@@ -122,7 +125,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text('Sign In', style: TextStyle(fontSize: 18)),
+                      child: const Text('Sign In',
+                          style: TextStyle(fontSize: 18)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -133,11 +137,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     children: [
                       Text(
                         "Don't have an account?",
-                        style: textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                        style: textTheme.bodyMedium
+                            ?.copyWith(color: Colors.white70),
                       ),
                       TextButton(
                         onPressed: _handleSignUp,
-                        child: const Text('Sign Up', style: TextStyle(color: Colors.purpleAccent)),
+                        child: const Text('Sign Up',
+                            style: TextStyle(color: Colors.purpleAccent)),
                       ),
                     ],
                   ),
@@ -169,7 +175,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         prefixIcon: Icon(icon, color: Colors.white70),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off, color: Colors.white70),
+                icon: Icon(
+                    obscureText ? Icons.visibility : Icons.visibility_off,
+                    color: Colors.white70),
                 onPressed: () {
                   setState(() {
                     _obscurePassword = !_obscurePassword;
@@ -185,14 +193,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
-  void _handleSignIn() async {
+  Future<void> _handleSignIn() async {
     try {
+      // Firebase authentication
       await authService.value.signInWithEmailAndPassword(
         email: _emailController.text,
         password: _passwordController.text,
       );
 
-      // Navigate to MatchesView
+      // ① Ask backend if the UID exists in SQL
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      await BackendApi.verifyLogin(uid);
+
+      // ② Proceed to the app if the user exists
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeNav()),
@@ -200,6 +213,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? "Authentication Error")),
+      );
+    } catch (e) {
+      // Backend said “UID not found” → sign out & inform user
+      await authService.value.signOut();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Account not registered in Campus Picks")),
       );
     }
   }
