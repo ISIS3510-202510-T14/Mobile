@@ -21,6 +21,8 @@ class MatchModel {
   final int? minute;
   final DateTime dateTime = DateTime.now();
   final String venue;
+  final double oddsA;
+  final double oddsB;
   
   // Nuevo campo opcional para marcar como favorito
   bool isFavorite;
@@ -44,6 +46,8 @@ class MatchModel {
     this.minute,
     this.venue = 'La caneca',
     this.isFavorite = false, // Valor predeterminado false
+    required this.oddsA,
+    required this.oddsB,
   });
 
   factory MatchModel.fromJson(Map<String, dynamic> json) {
@@ -86,6 +90,8 @@ class MatchModel {
       isFavorite: json.containsKey('isFavorite') ? json['isFavorite'] as bool : false,
       logoTeamA: json.containsKey("home_logo") ? json["home_logo"] : "assets/images/team_alpha.png",
       logoTeamB: json.containsKey("away_logo") ? json["away_logo"] : "assets/images/team_beta.png",
+      oddsA: json['oddsA'] != null ? (json['oddsA'] as num).toDouble() : 1.0,
+      oddsB: json['oddsB'] != null ? (json['oddsB'] as num).toDouble() : 1.0,
     );
   }
 
@@ -110,6 +116,8 @@ class MatchModel {
       'dateTime': dateTime.toIso8601String(),
       'venue': venue,
       'isFavorite': isFavorite, // Se incluye en el map para persistirlo localmente si se desea
+      'oddsA': oddsA,
+      'oddsB': oddsB,
     };
   }
 }

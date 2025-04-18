@@ -1,22 +1,16 @@
 import '../../data/models/match_model.dart';
-import 'dart:math';
 
 class BetViewModel {
   final MatchModel match;
   final String userId;
-  late double oddsA;
-  late double oddsB;
+  late final double oddsA;
+  late final double oddsB;
 
-  
-  BetViewModel({required this.match, required this.userId}) {
-    _generateRandomOdds();
+  BetViewModel({
+    required this.match,
+    required this.userId,
+  }) {
+    oddsA = match.oddsA;
+    oddsB = match.oddsB;
   }
-  
-  void _generateRandomOdds() {
-    final rand = Random();
-    oddsA = (rand.nextDouble() * 1.5) + 1.0;
-    oddsB = (rand.nextDouble() * 1.5) + 1.0;
-  }
-
-
 }

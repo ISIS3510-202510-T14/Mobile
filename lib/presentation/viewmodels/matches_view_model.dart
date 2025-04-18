@@ -104,6 +104,8 @@ class MatchesViewModel extends ChangeNotifier {
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
+          oddsA: 1.50,
+          oddsB: 2.20,
         ),
         MatchModel(
           eventId: 'fallback-2',
@@ -118,6 +120,8 @@ class MatchesViewModel extends ChangeNotifier {
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
+          oddsA: 1.80,
+          oddsB: 2.05,
         ),
          MatchModel(
           eventId: 'fallback-2',
@@ -132,6 +136,8 @@ class MatchesViewModel extends ChangeNotifier {
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
+          oddsA: 1.25,
+          oddsB: 3.10,
         ),
       ];
 
