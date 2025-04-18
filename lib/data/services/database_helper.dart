@@ -1,165 +1,182 @@
+// lib/data/services/database_helper.dart
+//
+// FULL, UNABRIDGED SOURCE  – version 3
+//
+// * v1  → initial schema
+// * v2  → +oddsA / oddsB to matches
+// * v3  → richer bets table (betId, teamId, match, sport, status, placedAt, updatedAt)
+//         + batch insert + auto‑prune helpers
+//
+// ---------------------------------------------------------------------------
+
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+
 import '../models/match_model.dart';
 import '../models/bet_model.dart';
 import '../models/recommended_bet_model.dart';
 
 class DatabaseHelper {
-  // Patrón Singleton
+  // ------------------------ singleton boilerplate ------------------------
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
   DatabaseHelper._internal();
 
   static Database? _database;
 
-  // Getter para obtener la base de datos (inicializa si es necesario)
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('matches.db');
     return _database!;
   }
 
-  // Inicializa la base de datos indicando la ruta y el nombre del archivo
+  // ------------------------ init + migrations ------------------------
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-    
+    final path   = join(dbPath, filePath);
+
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,                                   // <-- bump to v3
       onCreate: _createDB,
       onUpgrade: (db, oldV, newV) async {
         if (oldV < 2) {
+          // v2 – add odds to matches
           await db.execute('ALTER TABLE matches ADD COLUMN oddsA REAL DEFAULT 1.0;');
           await db.execute('ALTER TABLE matches ADD COLUMN oddsB REAL DEFAULT 1.0;');
+        }
+        if (oldV < 3) {
+          // v3 – extend bets table
+          await db.execute('ALTER TABLE bets ADD COLUMN betId   TEXT;');
+          await db.execute('ALTER TABLE bets ADD COLUMN teamId  TEXT;');
+          await db.execute('ALTER TABLE bets ADD COLUMN "match" TEXT;');
+          await db.execute('ALTER TABLE bets ADD COLUMN sport   TEXT;');
+          await db.execute('ALTER TABLE bets ADD COLUMN status  TEXT DEFAULT "placed";');
+          await db.execute('ALTER TABLE bets ADD COLUMN placedAt  TEXT;');
+          await db.execute('ALTER TABLE bets ADD COLUMN updatedAt TEXT;');
         }
       },
     );
   }
 
-  // Método para crear las tablas
+  // ------------------------ schema creation ------------------------
   Future _createDB(Database db, int version) async {
-    // Considerando los atributos de MatchModel, definimos una tabla "matches".
-    // En este ejemplo, para el campo 'location' usamos dos columnas: locationLat y locationLng.
-    const matchTable = '''
+    // MATCHES -----------------------------------------
+    const matchesTable = '''
       CREATE TABLE matches (
-        eventId TEXT PRIMARY KEY,
-        acidEventId TEXT,
-        name TEXT,
-        sport TEXT,
-        locationLat REAL,
-        locationLng REAL,
-        startTime TEXT,
-        status TEXT,
-        providerId TEXT,
-        homeTeam TEXT,
-        awayTeam TEXT,
-        tournament TEXT,
-        logoTeamA TEXT,
-        logoTeamB TEXT,
-        home_score INTEGER,
-        away_score INTEGER,
-        minute INTEGER,
-        dateTime TEXT,
-        venue TEXT,
-        oddsA REAL,      
-        oddsB REAL       
-      )
+        eventId      TEXT PRIMARY KEY,
+        acidEventId  TEXT,
+        name         TEXT,
+        sport        TEXT,
+        locationLat  REAL,
+        locationLng  REAL,
+        startTime    TEXT,
+        status       TEXT,
+        providerId   TEXT,
+        homeTeam     TEXT,
+        awayTeam     TEXT,
+        tournament   TEXT,
+        logoTeamA    TEXT,
+        logoTeamB    TEXT,
+        home_score   INTEGER,
+        away_score   INTEGER,
+        minute       INTEGER,
+        dateTime     TEXT,
+        venue        TEXT,
+        oddsA        REAL,
+        oddsB        REAL
+      );
     ''';
-    await db.execute(matchTable);
+    await db.execute(matchesTable);
 
-
-      // Tabla de Bets (apuestas)
-    const betTable = '''
+    // BETS --------------------------------------------
+    const betsTable = '''
       CREATE TABLE bets (
-        userId TEXT NOT NULL,
-        eventId TEXT NOT NULL,
-        stake REAL NOT NULL,
-        odds REAL ,
-        team TEXT NOT NULL,
+        betId     TEXT,
+        userId    TEXT NOT NULL,
+        eventId   TEXT NOT NULL,
+        teamId    TEXT,
+        team      TEXT NOT NULL,
+        stake     REAL NOT NULL,
+        odds      REAL,
+        "match"   TEXT,
+        sport     TEXT,
+        status    TEXT,
+        placedAt  TEXT,
+        updatedAt TEXT,
         PRIMARY KEY (userId, eventId)
       );
     ''';
-    await db.execute(betTable);
+    await db.execute(betsTable);
 
+    // RECOMMENDED_BETS --------------------------------
+    const recommendedBetTable = '''
+      CREATE TABLE recommended_bets (
+        recommendationId TEXT PRIMARY KEY,
+        eventId   TEXT,
+        betType   TEXT,
+        description TEXT,
+        createdAt TEXT
+      );
+    ''';
+    await db.execute(recommendedBetTable);
 
-      // Tabla de Recommended Bets
-  const recommendedBetTable = '''
-    CREATE TABLE recommended_bets (
-      recommendationId TEXT PRIMARY KEY,
-      eventId TEXT,
-      betType TEXT,
-      description TEXT,
-      createdAt TEXT
-    )
-  ''';
-  await db.execute(recommendedBetTable);
-
-  // Dentro de _createDB(Database db, int version) después de las otras tablas:
-  const favoriteTable = '''
-    CREATE TABLE favorites (
-      userId TEXT NOT NULL,
-      eventId TEXT NOT NULL,
-      PRIMARY KEY (userId, eventId)
-    )
-  ''';
-  await db.execute(favoriteTable);
-
+    // FAVORITES ---------------------------------------
+    const favoriteTable = '''
+      CREATE TABLE favorites (
+        userId  TEXT NOT NULL,
+        eventId TEXT NOT NULL,
+        PRIMARY KEY (userId, eventId)
+      );
+    ''';
+    await db.execute(favoriteTable);
   }
 
-  // ****************** OPERACIONES CRUD ******************
+  // ************************************************************
+  //   MATCHES  (single + batch + prune)
+  // ************************************************************
 
-    // ---------- Métodos para la tabla matches ----------
-  // CREATE: Insertar un nuevo match
-Future<int> insertMatch(MatchModel match) async {
-  final db = await database;
-  // Prepara el Map a insertar
-  final matchMap = _prepareMatchForDb(match);
-  return await db.insert(
-    'matches',
-    matchMap,
-    conflictAlgorithm: ConflictAlgorithm.replace,
-  );
-}
-
-
-Future<MatchModel?> getMatch(String eventId) async {
-  final db = await database;
-  final res = await db.query(
-    'matches',
-    where: 'eventId = ?',
-    whereArgs: [eventId],
-  );
-  if (res.isNotEmpty) {
-    // Convierte el registro plano a la estructura que espera fromJson()
-    return MatchModel.fromJson(_convertDbRowToMatchJson(res.first));
+  Future<int> insertMatch(MatchModel match) async {
+    final db = await database;
+    return await db.insert(
+      'matches',
+      _prepareMatchForDb(match),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
-  return null;
-}
 
+  Future<MatchModel?> getMatch(String eventId) async {
+    final db = await database;
+    final res = await db.query(
+      'matches',
+      where: 'eventId = ?',
+      whereArgs: [eventId],
+    );
+    if (res.isNotEmpty) {
+      return MatchModel.fromJson(_convertDbRowToMatchJson(res.first));
+    }
+    return null;
+  }
 
-Future<List<MatchModel>> getAllMatches() async {
-  final db = await database;
-  final res = await db.query('matches');
-  // Para cada registro se realiza la conversión y luego se mapea a un objeto MatchModel
-  return res.map((row) => MatchModel.fromJson(_convertDbRowToMatchJson(row))).toList();
-}
+  Future<List<MatchModel>> getAllMatches() async {
+    final db  = await database;
+    final res = await db.query('matches');
+    return res
+        .map((row) => MatchModel.fromJson(_convertDbRowToMatchJson(row)))
+        .toList();
+  }
 
+  Future<int> updateMatch(MatchModel match) async {
+    final db = await database;
+    return await db.update(
+      'matches',
+      _prepareMatchForDb(match),
+      where: 'eventId = ?',
+      whereArgs: [match.eventId],
+    );
+  }
 
- Future<int> updateMatch(MatchModel match) async {
-  final db = await database;
-  final matchMap = _prepareMatchForDb(match);
-  return await db.update(
-    'matches',
-    matchMap,
-    where: 'eventId = ?',
-    whereArgs: [match.eventId],
-  );
-}
-
-
-  // DELETE: Eliminar un match por su eventId
   Future<int> deleteMatch(String eventId) async {
     final db = await database;
     return await db.delete(
@@ -169,88 +186,87 @@ Future<List<MatchModel>> getAllMatches() async {
     );
   }
 
-
-  /* ---------- NUEVO: filtra y recorta ---------- */
-Future<void> _pruneNonFavoriteMatches() async {
-  final db = await database;
-  // 1. id‑s de favoritos
-  final favIds = await db.query('favorites', columns: ['eventId']);
-  final favSet = favIds.map((e) => e['eventId'] as String).toSet();
-
-  // 2. seleccionar NO favoritos dentro de la ventana ±7 días
-  final candidates = await db.rawQuery('''
-    SELECT eventId, startTime
-    FROM matches
-    WHERE eventId NOT IN (${List.filled(favSet.length, '?').join(',')})
-      AND startTime BETWEEN datetime('now','-7 days') 
-                        AND datetime('now','+7 days')
-    ORDER BY ABS(julianday(startTime) - julianday('now')) ASC
-  ''', favSet.toList());
-
-  // 3. si sobran más de 100, borra los excedentes
-  const limit = 100;
-  if (candidates.length > limit) {
-    final toDelete = candidates.sublist(limit).map((m) => m['eventId']).toList();
-    await db.delete(
-      'matches',
-      where: 'eventId IN (${List.filled(toDelete.length, '?').join(',')})',
-      whereArgs: toDelete,
-    );
-  }
-}
-
-  /* ---------- modifica insert masivo ---------- */
+  // ---------- BATCH INSERT + AUTO‑PRUNE ----------
   Future<void> insertMatchesBatch(List<MatchModel> matches) async {
-    final db = await database;
+    final db    = await database;
     final batch = db.batch();
 
-    final now = DateTime.now();
+    final now        = DateTime.now();
     final weekBefore = now.subtract(const Duration(days: 7));
     final weekAfter  = now.add(const Duration(days: 7));
 
     for (final m in matches) {
-      // ignora si está fuera de ventana de una semana
-      if (m.startTime.isBefore(weekBefore) || m.startTime.isAfter(weekAfter)) continue;
-      batch.insert('matches', _prepareMatchForDb(m),
-          conflictAlgorithm: ConflictAlgorithm.replace);
+      if (m.startTime.isBefore(weekBefore) || m.startTime.isAfter(weekAfter)) {
+        continue; // outside the ±7‑day window
+      }
+      batch.insert(
+        'matches',
+        _prepareMatchForDb(m),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
     await batch.commit(noResult: true);
 
-    await _pruneNonFavoriteMatches();   // <-- poda tras la inserción
+    await _pruneNonFavoriteMatches();
   }
 
+  Future<void> _pruneNonFavoriteMatches() async {
+    final db = await database;
 
+    // 1) set of favorite IDs
+    final favRows = await db.query('favorites', columns: ['eventId']);
+    final favSet  = favRows.map((r) => r['eventId'] as String).toSet();
 
-Map<String, dynamic> _prepareMatchForDb(MatchModel match) {
-  final original = Map<String, dynamic>.from(match.toJson());
-  original.remove('location');
-  original.remove('isFavorite');
-  // flatten location…
-  original['locationLat'] = match.location.lat;
-  original['locationLng'] = match.location.lng;
-  // add odds
-  original['oddsA'] = match.oddsA;
-  original['oddsB'] = match.oddsB;
-  return original;
-}
+    // 2) candidate non‑favorite matches inside ±7 days
+    final cands = await db.rawQuery('''
+      SELECT eventId
+      FROM matches
+      WHERE eventId NOT IN (${List.filled(favSet.length, '?').join(',')})
+        AND startTime BETWEEN datetime('now','-7 days')
+                          AND datetime('now','+7 days')
+    ''', favSet.toList());
 
-Map<String, dynamic> _convertDbRowToMatchJson(Map<String, dynamic> row) {
-  final mutableRow = Map<String, dynamic>.from(row);
-  mutableRow['location'] = {
-    'lat': mutableRow['locationLat'],
-    'lng': mutableRow['locationLng'],
-  };
-  mutableRow['oddsA'] = row['oddsA'];
-  mutableRow['oddsB'] = row['oddsB'];
-  mutableRow['home_logo'] = mutableRow['logoTeamA'];
-  mutableRow['away_logo'] = mutableRow['logoTeamB'];
-  return mutableRow;
-}
+    // 3) keep only the 100 closest
+    const limit = 100;
+    if (cands.length > limit) {
+      final toDelete =
+          cands.sublist(limit).map((r) => r['eventId']).toList();
+      await db.delete(
+        'matches',
+        where: 'eventId IN (${List.filled(toDelete.length, '?').join(',')})',
+        whereArgs: toDelete,
+      );
+    }
+  }
 
+  // ---------- helpers ----------
+  Map<String, dynamic> _prepareMatchForDb(MatchModel match) {
+    final map = Map<String, dynamic>.from(match.toJson());
 
-    // ---------- Métodos para la tabla Bets ----------
+    // flatten location & odds
+    map['locationLat'] = match.location.lat;
+    map['locationLng'] = match.location.lng;
+    map.remove('location');
+    map.remove('isFavorite');
 
-    Future<int> insertBet(BetModel bet) async {
+    return map;
+  }
+
+  Map<String, dynamic> _convertDbRowToMatchJson(Map<String, dynamic> row) {
+    final m = Map<String, dynamic>.from(row);
+    m['location'] = {'lat': m['locationLat'], 'lng': m['locationLng']};
+    m['oddsA']    = m['oddsA'];
+    m['oddsB']    = m['oddsB'];
+    m['home_logo'] = m['logoTeamA'];
+    m['away_logo'] = m['logoTeamB'];
+    return m;
+  }
+
+  // ************************************************************
+  //   BETS
+  // ************************************************************
+
+  Future<int> insertBet(BetModel bet) async {
     final db = await database;
     return await db.insert(
       'bets',
@@ -260,22 +276,30 @@ Map<String, dynamic> _convertDbRowToMatchJson(Map<String, dynamic> row) {
   }
 
   Future<BetModel?> getBet(String userId, String eventId) async {
-    final db = await database;
+    final db  = await database;
     final res = await db.query(
       'bets',
       where: 'userId = ? AND eventId = ?',
       whereArgs: [userId, eventId],
     );
-    if (res.isNotEmpty) {
-      return BetModel.fromJson(res.first);
-    }
+    if (res.isNotEmpty) return BetModel.fromJson(res.first);
     return null;
   }
 
   Future<List<BetModel>> getAllBets() async {
-    final db = await database;
+    final db  = await database;
     final res = await db.query('bets');
-    return res.map((json) => BetModel.fromJson(json)).toList();
+    return res.map((j) => BetModel.fromJson(j)).toList();
+  }
+
+  Future<List<BetModel>> getBetsForUser(String userId) async {
+    final db  = await database;
+    final res = await db.query(
+      'bets',
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
+    return res.map((j) => BetModel.fromJson(j)).toList();
   }
 
   Future<int> updateBet(BetModel bet) async {
@@ -297,61 +321,52 @@ Map<String, dynamic> _convertDbRowToMatchJson(Map<String, dynamic> row) {
     );
   }
 
-// ----------------- Métodos para RecommendedBet -----------------
+  // ************************************************************
+  //   RECOMMENDED BETS
+  // ************************************************************
 
-// CREATE: Insertar una nueva RecommendedBet
-Future<int> insertRecommendedBet(RecommendedBet bet) async {
-  final db = await database;
-  return await db.insert(
-    'recommended_bets',
-    bet.toJson(),
-    conflictAlgorithm: ConflictAlgorithm.replace,
-  );
-}
-
-// READ: Obtener una RecommendedBet por recommendationId
-Future<RecommendedBet?> getRecommendedBet(String recommendationId) async {
-  final db = await database;
-  final res = await db.query(
-    'recommended_bets',
-    where: 'recommendationId = ?',
-    whereArgs: [recommendationId],
-  );
-  if (res.isNotEmpty) {
-    return RecommendedBet.fromJson(res.first);
+  Future<int> insertRecommendedBet(RecommendedBet bet) async {
+    final db = await database;
+    return await db.insert(
+      'recommended_bets',
+      bet.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
-  return null;
-}
 
-// READ: Obtener todas las RecommendedBets
-Future<List<RecommendedBet>> getAllRecommendedBets() async {
-  final db = await database;
-  final res = await db.query('recommended_bets');
-  return res.map((row) => RecommendedBet.fromJson(row)).toList();
-}
+  Future<RecommendedBet?> getRecommendedBet(String id) async {
+    final db  = await database;
+    final res = await db.query(
+      'recommended_bets',
+      where: 'recommendationId = ?',
+      whereArgs: [id],
+    );
+    if (res.isNotEmpty) return RecommendedBet.fromJson(res.first);
+    return null;
+  }
 
-// UPDATE: Actualizar una RecommendedBet existente
-Future<int> updateRecommendedBet(RecommendedBet bet) async {
-  final db = await database;
-  return await db.update(
-    'recommended_bets',
-    bet.toJson(),
-    where: 'recommendationId = ?',
-    whereArgs: [bet.recommendationId],
-  );
-}
+  Future<List<RecommendedBet>> getAllRecommendedBets() async {
+    final db  = await database;
+    final res = await db.query('recommended_bets');
+    return res.map((j) => RecommendedBet.fromJson(j)).toList();
+  }
 
-// DELETE: Eliminar una RecommendedBet por recommendationId
-Future<int> deleteRecommendedBet(String recommendationId) async {
-  final db = await database;
-  return await db.delete(
-    'recommended_bets',
-    where: 'recommendationId = ?',
-    whereArgs: [recommendationId],
-  );
-}
+  Future<int> updateRecommendedBet(RecommendedBet bet) async {
+    final db = await database;
+    return await db.update(
+      'recommended_bets',
+      bet.toJson(),
+      where: 'recommendationId = ?',
+      whereArgs: [bet.recommendationId],
+    );
+  }
 
-
-
-
+  Future<int> deleteRecommendedBet(String id) async {
+    final db = await database;
+    return await db.delete(
+      'recommended_bets',
+      where: 'recommendationId = ?',
+      whereArgs: [id],
+    );
+  }
 }
