@@ -1,3 +1,4 @@
+import 'package:campus_picks/presentation/screens/user_bets_screen.dart';
 import 'package:flutter/material.dart';
 import 'matches_view.dart';
 import "recommended_bet_screen.dart"; // Asegúrate de importar tu pantalla de RecommendedBets
@@ -17,6 +18,7 @@ class _HomeNavState extends State<HomeNav> {
   final List<Widget> _screens = [
     const MatchesView(), // Índice 0: Matches
     const RecommendedBetsScreen(), // Índice 1: Recommended Bets
+    const UserBetsScreen(),
     const Placeholder(), // Índice 2: Marketplace (Coming soon)
     const Placeholder(), // Índice 3: Profile (Coming soon)
   ];
@@ -30,8 +32,8 @@ class _HomeNavState extends State<HomeNav> {
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
         onTap: (int index) {
-          // Solo los índices 0 y 1 navegan a una pantalla real.
-          if (index == 0 || index == 1) {
+          // We can nagivate to the first three screens, but the last two are placeholders.
+          if (index <= 2) {
             setState(() {
               _currentIndex = index;
             });
@@ -53,6 +55,10 @@ class _HomeNavState extends State<HomeNav> {
           BottomNavigationBarItem(
             icon: Icon(Icons.recommend), // Icono que represente Recommended Bets
             label: 'Recommended',
+          ),
+            BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),          
+            label: 'My Bets',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag_outlined),

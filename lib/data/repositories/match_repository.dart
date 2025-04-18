@@ -8,6 +8,10 @@ class MatchRepository {
     return await _dbHelper.getAllMatches();
   }
 
+  Future<MatchModel?> getMatch(String eventId) async {
+    return await _dbHelper.getMatch(eventId);
+  }
+
   Future<void> addMatch(MatchModel match) async {
     await _dbHelper.insertMatch(match);
   }
@@ -21,8 +25,6 @@ class MatchRepository {
   }
 
   Future<void> syncMatches(List<MatchModel> freshFromApi) async {
-  await _dbHelper.insertMatchesBatch(freshFromApi);
-}
-
-
+    await _dbHelper.insertMatchesBatch(freshFromApi);
+  }
 }

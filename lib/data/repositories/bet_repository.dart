@@ -17,6 +17,16 @@ class BetRepository {
     return await _dbHelper.getAllBets();
   }
 
+  Future<List<BetModel>> getBetsForUser(String userId) async {
+    final db = await _dbHelper.database;
+    final res = await db.query(
+        'bets',
+        where: 'userId = ?',
+        whereArgs: [userId],
+    );
+    return res.map((row) => BetModel.fromJson(row)).toList();
+  }
+
   Future<int> updateBet(BetModel bet) async {
     return await _dbHelper.updateBet(bet);
   }
