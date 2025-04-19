@@ -34,6 +34,15 @@ class UserBetsViewModel extends ChangeNotifier {
   bool               get loading => _loading;
   String?            get error   => _error;
 
+  //──────────────────────────────────────────────────────────────────────
+  //  Inject a just‑saved *offline draft* into the list without touching
+  //  SQLite – the screen refreshes instantly and we avoid extra I/O.
+  //──────────────────────────────────────────────────────────────────────
+  void addLocalBet(BetModel b) {
+    _bets.insert(0, BetWithMatch(bet: b, match: null));
+    notifyListeners();
+  }
+
   /// Loads the betting history – resilient to:
   /// • no connectivity  • backend down  • timeouts.
   Future<void> loadBets(String userId, {bool forceRemote = false}) async {

@@ -45,6 +45,20 @@ class BetRepository {
     return _dbHelper.deleteBet(userId, eventId);
   }
 
+    /// Returns all bets saved as drafts in local storage
+    Future<List<BetModel>> getDraftBets() async {
+      final rows = await _dbHelper.getDraftRows();
+      return rows.map((json) => BetModel.fromJson(json)).toList();
+    }
+
+    /// Marks the given draft bet as synced (clears isDraft flag)
+    Future<void> markBetAsSynced(BetModel bet) async {
+      await _dbHelper.markBetSynced(bet.userId, bet.eventId);
+    }
+
+    /// Alias for bulk fetching drafts for syncing
+    Future<List<BetModel>> bulkSyncDrafts() => getDraftBets();
+
   // ──────────────────────────────────────────────────────────────────────
   //  BULK SYNC  – called by UserBetsViewModel after a /api/bets/history
   // ──────────────────────────────────────────────────────────────────────

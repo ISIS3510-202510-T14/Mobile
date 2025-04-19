@@ -67,9 +67,8 @@ class MatchesViewModel extends ChangeNotifier {
 
       // Usamos el factory del modelo para parsear cada evento
       List<MatchModel> matches = events.map((e) {
-        print('[fetchMatches] Procesando evento: $e');
+        // ensure new endTime reaches the model
         final match = MatchModel.fromJson(e);
-        print('[fetchMatches] Location del match: ${match.location}');
         return match;
       }).toList();
 
