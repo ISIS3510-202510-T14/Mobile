@@ -2,9 +2,33 @@ import 'package:campus_picks/data/models/bet_model.dart';
 import 'package:campus_picks/data/repositories/bet_repository.dart';
 import 'package:campus_picks/theme/spacing.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import '../viewmodels/bet_viewmodel.dart';
+
+/// Formats numeric input as US currency with commas and two decimals
+class CurrencyInputFormatter extends TextInputFormatter {
+  final NumberFormat _formatter = NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2);
+
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    // Strip non-numeric characters
+    String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return TextEditingValue(
+      text: _formatter.format(0),
+      selection: TextSelection.collapsed(offset: _formatter.format(0).length),
+    );
+    double value = double.parse(digits) / 100;
+    String formatted = _formatter.format(value);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 class BetScreen extends StatefulWidget {
   final BetViewModel viewModel;
@@ -17,24 +41,24 @@ class BetScreen extends StatefulWidget {
 
 class _BetScreenState extends State<BetScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _amountController = TextEditingController();
+  // Initialize with $0.00 by default
+  final TextEditingController _amountController = TextEditingController(
+    text: NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2).format(0),
+  );
   String? selectedTeam;
-  
+
   Future<void> _placeBet(double amount) async {
     final url = Uri.parse('http://localhost:8000/api/bets');
-    final odds = selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.oddsA : widget.viewModel.oddsB;
+    final odds = selectedTeam == widget.viewModel.match.homeTeam
+        ? widget.viewModel.oddsA
+        : widget.viewModel.oddsB;
     final body = jsonEncode({
       "userId": widget.viewModel.userId,
       "eventId": widget.viewModel.match.acidEventId,
       "stake": amount,
       "odds": odds,
       "team": selectedTeam,
-      
     });
-    
-    print('Placing bet with body: $body');
-
-
 
     try {
       final response = await http.post(
@@ -43,21 +67,21 @@ class _BetScreenState extends State<BetScreen> {
         body: body,
       );
       if (response.statusCode == 201) {
-          final data = jsonDecode(response.body);
-          final repo = BetRepository();
-          await repo.insertBet(
-            BetModel(
-              betId:   data['betId'],
-              userId:  widget.viewModel.userId,
-              eventId: widget.viewModel.match.eventId,
-              team:    selectedTeam!,
-              stake:   amount,
-              odds:    odds,
-              status:  'placed',
-              createdAt: DateTime.parse(data['timestamp']),
-              updatedAt: DateTime.parse(data['timestamp']),
-            ),
-          );
+        final data = jsonDecode(response.body);
+        final repo = BetRepository();
+        await repo.insertBet(
+          BetModel(
+            betId: data['betId'],
+            userId: widget.viewModel.userId,
+            eventId: widget.viewModel.match.eventId,
+            team: selectedTeam!,
+            stake: amount,
+            odds: odds,
+            status: 'placed',
+            createdAt: DateTime.parse(data['timestamp']),
+            updatedAt: DateTime.parse(data['timestamp']),
+          ),
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
@@ -66,7 +90,6 @@ class _BetScreenState extends State<BetScreen> {
         );
         Navigator.pop(context);
       } else {
-        print('failed body: $body');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Theme.of(context).colorScheme.error,
@@ -76,7 +99,7 @@ class _BetScreenState extends State<BetScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+        SnackBar(
           backgroundColor: Theme.of(context).colorScheme.error,
           content: Text('Error: $e'),
         ),
@@ -86,15 +109,26 @@ class _BetScreenState extends State<BetScreen> {
 
   void _confirmBet() {
     if (!_formKey.currentState!.validate()) return;
-    final amount = double.parse(_amountController.text);
-    
+    // Parse formatted string back to double
+    final raw = _amountController.text.replaceAll(RegExp(r'[^0-9.]'), '');
+    final amount = double.tryParse(raw) ?? 0;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Image.asset(selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.match.logoTeamA : widget.viewModel.match.logoTeamB, width: 50,height: 50,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported),
-                  ),
-        content: Text('Are you sure you want to bet ¢${amount.toStringAsFixed(0)} on $selectedTeam with odds of ${selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.oddsA.toStringAsFixed(2) : widget.viewModel.oddsB.toStringAsFixed(2)}?'),
+        title: Image.asset(
+          selectedTeam == widget.viewModel.match.homeTeam
+              ? widget.viewModel.match.logoTeamA
+              : widget.viewModel.match.logoTeamB,
+          width: 50,
+          height: 50,
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.image_not_supported),
+        ),
+        content: Text(
+          'Are you sure you want to bet ${_amountController.text} on $selectedTeam '
+          'with odds of ${selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.oddsA.toStringAsFixed(2) : widget.viewModel.oddsB.toStringAsFixed(2)}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -111,12 +145,12 @@ class _BetScreenState extends State<BetScreen> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    final theme   = Theme.of(context);
-    final colors  = theme.colorScheme;
-    final vm      = widget.viewModel;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final vm = widget.viewModel;
     final spacing = const EdgeInsets.all(AppSpacing.l);
 
     return Scaffold(
@@ -131,15 +165,16 @@ class _BetScreenState extends State<BetScreen> {
               // ----- amount input -----
               TextFormField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [CurrencyInputFormatter()],
                 textAlign: TextAlign.center,
                 style: theme.textTheme.displayLarge!.copyWith(color: colors.primary),
                 decoration: const InputDecoration(
-                  hintText: '¢0',
                   border: InputBorder.none,
                 ),
                 validator: (value) {
-                  final v = double.tryParse(value ?? '');
+                  final raw = value?.replaceAll(RegExp(r'[^0-9.]'), '');
+                  final v = double.tryParse(raw ?? '');
                   if (v == null || v <= 0) return 'Enter a positive amount';
                   return null;
                 },
@@ -183,13 +218,13 @@ class _BetScreenState extends State<BetScreen> {
   }
 
   Widget _teamChip({
-    required String  team,
-    required double  odds,
-    required bool    selected,
+    required String team,
+    required double odds,
+    required bool selected,
     required VoidCallback onTap,
-    required Color   selectedColor,
+    required Color selectedColor,
   }) {
-    final theme  = Theme.of(context);
+    final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
     return ChoiceChip(
@@ -198,7 +233,7 @@ class _BetScreenState extends State<BetScreen> {
       selectedColor: selectedColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       label: SizedBox(
-        width: 120,                        // fixed width keeps all chips equal
+        width: 120,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -222,5 +257,4 @@ class _BetScreenState extends State<BetScreen> {
       ),
     );
   }
-
 }

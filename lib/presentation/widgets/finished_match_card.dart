@@ -1,11 +1,12 @@
+// lib/presentation/widgets/finished_match_card.dart
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+
 import '../../data/models/match_model.dart';
+import '../viewmodels/matches_view_model.dart';
 import 'base_match_card.dart';
 import 'favorite_button.dart';
-import '../viewmodels/matches_view_model.dart';
-import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-
 
 class FinishedMatchCard extends BaseMatchCard {
   const FinishedMatchCard({Key? key, required MatchModel match})
@@ -13,161 +14,184 @@ class FinishedMatchCard extends BaseMatchCard {
 
   @override
   Widget buildMatchContent(BuildContext context) {
-    final dateString =
-        "${match.startTime.day}/${match.startTime.month}/${match.startTime.year}";
-    final timeString =
-        "${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}";
-    final scoreA = match.scoreTeamA ?? 0;
-    final scoreB = match.scoreTeamB ?? 0;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
-    final isTie = scoreA == scoreB;
+    // Small, subdued labels
+    final smallLabel = theme.textTheme.bodySmall
+        ?.copyWith(color: colors.onSurface.withOpacity(0.6));
+
+    // Date/time formatting
+    final date = match.startTime;
+    final dateString = '${date.day}/${date.month}/${date.year}';
+    final timeString =
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+    // Scores and winner flags
+    final int scoreA = match.scoreTeamA ?? 0;
+    final int scoreB = match.scoreTeamB ?? 0;
     final isTeamAWinner = scoreA > scoreB;
     final isTeamBWinner = scoreB > scoreA;
 
-    final crownIcon = Icon(
-      Icons.emoji_events,
-      color: Colors.yellow.shade600,
-      size: 20,
+    // Determine dynamic score font size if three digits
+    final bool hasThreeDigits = scoreA >= 100 || scoreB >= 100;
+    final double baseFontSize =
+        theme.textTheme.titleLarge?.fontSize ?? 22;
+    final double scoreFontSize = hasThreeDigits
+        ? baseFontSize * 0.8
+        : baseFontSize;
+    final scoreStyle = theme.textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.bold,
+      fontSize: scoreFontSize,
     );
 
-    // Contenido principal de la card
-    Widget content = Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Text(
-          '${match.homeTeam} vs ${match.awayTeam}',
-          textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isTeamAWinner && !isTie) crownIcon,
-                      const SizedBox(height: 4),
-                      CachedNetworkImage(
-                        imageUrl: match.logoTeamA, // Se asume que es una URL.
-                        width: 40,
-                        height: 40,
-                        placeholder: (context, url) => const CircularProgressIndicator(),
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.image_not_supported),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        match.homeTeam,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 100,
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        scoreA.toString(),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const Text(
-                        ':',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                      Text(
-                        scoreB.toString(),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isTeamBWinner && !isTie) crownIcon,
-                      const SizedBox(height: 4),
-                      CachedNetworkImage(
-                          imageUrl: match.logoTeamB, // Se asume que es una URL.
-                          width: 40,
-                          height: 40,
-                          placeholder: (context, url) => const CircularProgressIndicator(),
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.image_not_supported),
-                        ),
-                      const SizedBox(height: 4),
-                      Text(
-                        match.awayTeam,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        if (isTie)
-          Text(
-            '¡Draw!',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Colors.grey),
-          ),
-        const SizedBox(height: 12),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Date: $dateString, Time: $timeString",
-                style: Theme.of(context).textTheme.bodySmall,
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // total width inside the 16px padding on each side
+              final total = constraints.maxWidth;
+              const scoreW = 80.0;
+              // split the rest equally
+              final half = (total - scoreW) / 2;
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ─── 3‑column row ───
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // left half
+                      SizedBox(
+                        width: half,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: _teamBadge(
+                            context: context,
+                            imageUrl: match.logoTeamA,
+                            teamName: match.homeTeam,
+                            isWinner: isTeamAWinner,
+                          ),
+                        ),
+                      ),
+
+                      // center score (fixed)
+                      SizedBox(
+                        width: scoreW,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(scoreA.toString(), style: scoreStyle),
+                              const SizedBox(width: 4),
+                              Text(':', style: scoreStyle),
+                              const SizedBox(width: 4),
+                              Text(scoreB.toString(), style: scoreStyle),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // right half
+                      SizedBox(
+                        width: half,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: _teamBadge(
+                            context: context,
+                            imageUrl: match.logoTeamB,
+                            teamName: match.awayTeam,
+                            isWinner: isTeamBWinner,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Date/time & venue
+                  Text('$dateString  •  $timeString', style: smallLabel),
+                  const SizedBox(height: 4),
+                  Text(match.venue, style: smallLabel),
+                ],
+              );
+            },
+          ),
+        ),
+
+        // Favorite star centered above card
+        Positioned(
+          top: -12,
+          left: 0,
+          right: 0,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Material(
+              color: Colors.transparent,
+              child: FavoriteButton(
+                initialFavorite: match.isFavorite,
+                onFavoriteChanged: (fav) {
+                  Provider.of<MatchesViewModel>(context, listen: false)
+                      .toggleFavorite(match.eventId, fav, match);
+                },
               ),
-              const SizedBox(height: 4),
-              Text(
-                "Venue: ${match.venue}",
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+            ),
           ),
         ),
       ],
     );
+  }
 
-    // Se envuelve el contenido en un Stack e incluye el FavoriteButton
-    return Stack(
+  /// Exactly as before—icon + name with aura + ellipsizing.
+  Widget _teamBadge({
+    required BuildContext context,
+    required String imageUrl,
+    required String teamName,
+    required bool isWinner,
+  }) {
+    final theme = Theme.of(context);
+    final auraColor = isWinner
+        ? theme.colorScheme.secondary.withOpacity(0.8)
+        : theme.colorScheme.error.withOpacity(0.6);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        content,
-        Positioned(
-          top: 8,
-          right: 8,
-          child: FavoriteButton(
-            initialFavorite: match.isFavorite,
-            onFavoriteChanged: (isFav) {
-              // Aquí actualizas el estado en la base de datos local o en tu ViewModel
-              Provider.of<MatchesViewModel>(context, listen: false).toggleFavorite(match.eventId, isFav, match);
-              print("Match ${match.eventId} favorited: $isFav");
-            },
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: auraColor, blurRadius: 12, spreadRadius: 4),
+            ],
+          ),
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            width: 32,
+            height: 32,
+            placeholder: (_, __) =>
+                const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2)),
+            errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported, size: 32),
           ),
         ),
-      ], 
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            teamName,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
+      ],
     );
   }
 }

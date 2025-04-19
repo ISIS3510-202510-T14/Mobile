@@ -1,10 +1,3 @@
-// lib/presentation/screens/user_bets_screen.dart
-//
-// v3 – 2025‑04‑18
-// • Adds a slim “OFF‑LINE · showing cached data” banner under the AppBar
-//   whenever ConnectivityNotifier says we’re offline.
-// • No other logic changed.
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,9 +18,7 @@ class UserBetsScreen extends StatelessWidget {
       create: (_) {
         final vm = UserBetsViewModel(connectivityNotifier: connectivityNotifier);
         final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          vm.loadBets(uid, forceRemote: false);
-        }
+        if (uid != null) vm.loadBets(uid, forceRemote: false);
         return vm;
       },
       child: const _UserBetsBody(),
@@ -43,36 +34,23 @@ class _UserBetsBody extends StatelessWidget {
     final vm   = context.watch<UserBetsViewModel>();
     final conn = context.watch<ConnectivityNotifier>();
     final uid  = FirebaseAuth.instance.currentUser?.uid;
-
     final bool offline = !conn.isOnline;
 
     return Scaffold(
-      // ──────────────────────────────── AppBar + offline banner
       appBar: AppBar(
         title: const Text('My Bets'),
         bottom: offline
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(20),
-                child: Container(
-                  height: 20,
-                  alignment: Alignment.center,
-                  color: Theme.of(context).colorScheme.primary,
-                  child: const Text(
-                    'OFF‑LINE · showing cached data',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                ),
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(20),
+                child: _OfflineBanner(),
               )
             : null,
       ),
-      // ──────────────────────────────── Body
       body: vm.loading
           ? const Center(child: CircularProgressIndicator())
           : vm.bets.isNotEmpty
               ? RefreshIndicator(
-                  onRefresh: () async {
-                    if (uid != null) await vm.loadBets(uid, forceRemote: true);
-                  },
+                  onRefresh: () async { if (uid != null) await vm.loadBets(uid, forceRemote: true); },
                   child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.only(top: 8, bottom: 24),
@@ -82,32 +60,42 @@ class _UserBetsBody extends StatelessWidget {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: () async {
-                    if (uid != null) await vm.loadBets(uid, forceRemote: true);
-                  },
+                  onRefresh: () async { if (uid != null) await vm.loadBets(uid, forceRemote: true); },
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 200),
-                      _EmptyState(),
-                    ],
+                    children: const [SizedBox(height: 200), _EmptyState()],
                   ),
                 ),
     );
   }
 }
 
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 20,
+      alignment: Alignment.center,
+      color: Theme.of(context).colorScheme.primary,
+      child: const Text(
+        'OFF‑LINE · showing cached data',
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
-
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long,
-              size: 80, color: Theme.of(context).colorScheme.primary),
+          Icon(Icons.receipt_long, size: 80,
+              color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 12),
           const Text('No bets yet', style: TextStyle(fontSize: 16)),
         ],
@@ -118,44 +106,52 @@ class _EmptyState extends StatelessWidget {
 
 class _BetCard extends StatelessWidget {
   const _BetCard({required this.bet});
-
   final BetWithMatch bet;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final t  = Theme.of(context).textTheme;
+    final t = Theme.of(context).textTheme;
 
-    // ---------- styles ----------
+    // Styles
     final labelStyle = t.bodySmall!
         .copyWith(color: cs.onSurface.withOpacity(0.6), height: 1.2);
     final valueStyle = t.bodyMedium!
         .copyWith(color: cs.onSurface, height: 1.3);
+    final matchStyle = t.titleSmall!
+        .copyWith(fontWeight: FontWeight.w600, fontSize: t.titleSmall!.fontSize! + 2);
 
-    // ---------- data ----------
-    final matchUp  = bet.match?.name ?? bet.bet.matchName ?? 'Unknown match';
-    final status   = bet.bet.status;
-    final team     = bet.bet.team;
-    final odds     = bet.bet.odds?.toStringAsFixed(2) ?? '-';
-    final stake    = '¢${bet.bet.stake.toStringAsFixed(0)}';
+    // Data
+    final matchUp = bet.match?.name ?? bet.bet.matchName ?? 'Unknown match';
+    final status = bet.bet.status;
+    final team = bet.bet.team;
+    final odds = bet.bet.odds?.toStringAsFixed(2) ?? '-';
     final placedAt = bet.bet.createdAt;
-    final dateFmt  = DateFormat('d MMM yyyy · HH:mm');
+    final dateFmt = DateFormat('d MMM yyyy · HH:mm');
 
-    // status → color + icon
-    late Color    statusColor;
+    // Format money in US style with cents smaller
+    final stakeValue = bet.bet.stake;
+    final nf = NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2);
+    final stakeFmt = nf.format(stakeValue);
+    final dotIndex = stakeFmt.lastIndexOf('.');
+    final intPart = stakeFmt.substring(0, dotIndex);
+    final centPart = stakeFmt.substring(dotIndex);
+
+    // Status color/icon
+    late Color statusColor;
     late IconData statusIcon;
     switch (status) {
       case 'won':
         statusColor = cs.secondary;
-        statusIcon  = Icons.trending_up;
+        statusIcon = Icons.trending_up;
         break;
       case 'lost':
         statusColor = cs.error;
-        statusIcon  = Icons.trending_down;
+        statusIcon = Icons.trending_down;
         break;
       default:
         statusColor = cs.tertiary;
-        statusIcon  = Icons.hourglass_bottom;
+        statusIcon = Icons.hourglass_bottom;
     }
 
     return Card(
@@ -167,9 +163,11 @@ class _BetCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ───── Row 1: MATCH & STATUS ─────
+            // Row 1: MATCH & STATUS
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
@@ -178,46 +176,38 @@ class _BetCard extends StatelessWidget {
                       Text('MATCH', style: labelStyle),
                       const SizedBox(height: 4),
                       Text(matchUp,
-                          style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          style: matchStyle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('STATUS', style: labelStyle),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(statusIcon, size: 16, color: statusColor),
-                            const SizedBox(width: 4),
-                            Text(
-                              status.toUpperCase(),
-                              style: t.bodySmall?.copyWith(
+                const SizedBox(width: 12),
+                IntrinsicWidth(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 16, color: statusColor),
+                        const SizedBox(width: 4),
+                        Text(status.toUpperCase(),
+                            style: t.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: statusColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                                color: statusColor)),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-
-            // ───── Row 2: YOUR TEAM & ODDS ─────
+            const SizedBox(height: 16),
+            
+            // Row 2: YOUR TEAM & ODDS
             Row(
               children: [
                 Expanded(
@@ -243,9 +233,9 @@ class _BetCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // ───── Row 3: STAKE & PLACED AT ─────
+            // Row 3: STAKE & PLACED AT
             Row(
               children: [
                 Expanded(
@@ -254,7 +244,18 @@ class _BetCard extends StatelessWidget {
                     children: [
                       Text('STAKE', style: labelStyle),
                       const SizedBox(height: 4),
-                      Text(stake, style: valueStyle),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(text: intPart, style: valueStyle),
+                            TextSpan(
+                              text: centPart,
+                              style: valueStyle.copyWith(
+                                  fontSize: valueStyle.fontSize! * 0.8),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
