@@ -7,7 +7,9 @@ import 'matches_view.dart';
 import 'package:campus_picks/data/services/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
-import 'package:campus_picks/data/services/backend_api.dart';   // ← NEW
+import 'package:campus_picks/data/services/backend_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,7 +41,18 @@ class _LoginScreenState extends State<LoginScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fadeController.forward();
     });
+    _loadSavedEmail();
   }
+
+  Future<void> _loadSavedEmail() async {
+  final prefs = await SharedPreferences.getInstance();
+  final savedEmail = prefs.getString('user_email');
+  if (savedEmail != null) {
+    setState(() {
+      _emailController.text = savedEmail;
+    });
+  }
+}
 
   @override
   void dispose() {
@@ -200,6 +213,9 @@ class _LoginScreenState extends State<LoginScreen>
         email: _emailController.text,
         password: _passwordController.text,
       );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_email', _emailController.text);
 
       // ① Ask backend if the UID exists in SQL
       final uid = FirebaseAuth.instance.currentUser!.uid;
