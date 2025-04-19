@@ -1,35 +1,22 @@
-// lib/data/services/draft_sync_service.dart
-// NEW – global background synchroniser for offline draft bets
-// -----------------------------------------------------------------------------
-//  • Listens to ConnectivityNotifier.
-//  • When the app goes online, reads all draft rows (isDraft = 1) and
-//    re‑POSTs them to the backend.
-//  • On every 201 OK it immediately marks the row as synced.
-//  • Exposes a ValueNotifier<String?> so the UI can show SnackBars/toasts if
-//    desired (optional – nothing in the core flow depends on it).
-// -----------------------------------------------------------------------------
-
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 import '../repositories/bet_repository.dart';
-import '../models/bet_model.dart';
 import 'connectivity_service.dart';
+import 'background_sync_service.dart';
 
+/// Watches connectivity and, when online, delegates
+/// draft‑bet synchronization to the background isolate
+/// while keeping all SQLite writes in the main isolate.
 class DraftSyncService extends ChangeNotifier {
   final ConnectivityNotifier connectivity;
   final BetRepository _repo = BetRepository();
 
-  /// Optional: emit user‑visible messages like “Syncing…” or “Drafts synced”.
+  /// Emits user‑visible messages like “Syncing…” or “Drafts synced”.
   final ValueNotifier<String?> syncStatus = ValueNotifier<String?>(null);
 
   DraftSyncService({required this.connectivity}) {
-    // Listen for connectivity changes.
     connectivity.addListener(_onConnectivityChanged);
-
-    // If we start online, kick off an initial sync.
-    if (connectivity.isOnline) _syncPendingDrafts();
+    if (connectivity.isOnline) _scheduleSync();
   }
 
   @override
@@ -38,47 +25,36 @@ class DraftSyncService extends ChangeNotifier {
     super.dispose();
   }
 
-  /*──────────────────────── private helpers ────────────────────────*/
   void _onConnectivityChanged() {
-    if (connectivity.isOnline) _syncPendingDrafts();
+    if (connectivity.isOnline) _scheduleSync();
   }
 
-  Future<void> _syncPendingDrafts() async {
+  /// Loads locally‐saved drafts, delegates the POSTs to the isolate,
+  /// then marks each successfully‐posted draft as synced in SQLite.
+  Future<void> _scheduleSync() async {
+    // 1) load all drafts from local SQLite
     final drafts = await _repo.bulkSyncDrafts();
     if (drafts.isEmpty) return;
 
+    // 2) notify UI
     syncStatus.value = 'Syncing draft bets…';
 
-    for (final d in drafts) {
-      final ok = await _sendDraft(d);
-      if (ok) {
-        await _repo.markBetAsSynced(d);
+    // 3) serialize and send to isolate
+    final jsonList = drafts.map((d) => d.toJson()).toList();
+    final succeeded = await BackgroundSyncService.syncDrafts(jsonList);
+
+    // 4) for each successful POST, reload the draft model and mark it synced
+    for (final info in succeeded) {
+      final userId = info['userId']!;
+      final eventId = info['eventId']!;
+      final draft = await _repo.getBet(userId, eventId);
+      if (draft != null) {
+        await _repo.markBetAsSynced(draft);
       }
     }
 
+    // 5) final UI update
     syncStatus.value = 'Draft bets synced';
     notifyListeners();
-  }
-
-  Future<bool> _sendDraft(BetModel d) async {
-    final url = Uri.parse('http://localhost:8000/api/bets');
-    final body = jsonEncode({
-      "userId": d.userId,
-      "eventId": d.eventId, // use the draft's own eventId
-      "stake" : d.stake,
-      "odds"  : d.odds,
-      "team"  : d.team,
-    });
-
-    try {
-      final res = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      );
-      return res.statusCode == 201;
-    } catch (_) {
-      return false;
-    }
   }
 }

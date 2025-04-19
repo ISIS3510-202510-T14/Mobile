@@ -1,3 +1,4 @@
+import 'package:campus_picks/data/services/isolate_manager.dart';
 import 'package:campus_picks/presentation/widgets/sync_status_listener.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -80,6 +81,9 @@ Future<void> main() async {
       }
     },
   );
+
+  // Spawn the background isolate for draft sync and other tasks
+  await IsolateManager().initialize();
 
   runApp(
     MultiProvider(
