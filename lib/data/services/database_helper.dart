@@ -38,7 +38,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,                                   // <-- bump to v3
+      version: 4,                                   // <-- bump to v4
       onCreate: _createDB,
       onUpgrade: (db, oldV, newV) async {
         if (oldV < 2) {
@@ -55,6 +55,11 @@ class DatabaseHelper {
           await db.execute('ALTER TABLE bets ADD COLUMN status  TEXT DEFAULT "placed";');
           await db.execute('ALTER TABLE bets ADD COLUMN placedAt  TEXT;');
           await db.execute('ALTER TABLE bets ADD COLUMN updatedAt TEXT;');
+        }
+        if (oldV < 4) {
+           // v4 – support offline drafts
+           await db.execute('ALTER TABLE bets ADD COLUMN isDraft INTEGER DEFAULT 0;');
+           await db.execute('ALTER TABLE bets ADD COLUMN syncedAt TEXT;');
         }
       },
     );
@@ -105,6 +110,8 @@ class DatabaseHelper {
         status    TEXT,
         placedAt  TEXT,
         updatedAt TEXT,
+        isDraft   INTEGER DEFAULT 0,
+        syncedAt  TEXT,
         PRIMARY KEY (userId, eventId)
       );
     ''';
@@ -268,9 +275,11 @@ class DatabaseHelper {
 
   Future<int> insertBet(BetModel bet) async {
     final db = await database;
+    final map = bet.toJson();
+    if (!map.containsKey('isDraft')) map['isDraft'] = 0;   // ← new line
     return await db.insert(
       'bets',
-      bet.toJson(),
+      map,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -316,6 +325,40 @@ class DatabaseHelper {
     final db = await database;
     return await db.delete(
       'bets',
+      where: 'userId = ? AND eventId = ?',
+      whereArgs: [userId, eventId],
+    );
+  }
+
+    /// Returns all locally‑saved draft rows (isDraft = 1)
+  Future<List<Map<String, dynamic>>> getDraftRows() async {
+    final db = await database;
+    try {
+      return await db.query(
+        'bets',
+        where: 'isDraft = ?',
+        whereArgs: [1],
+      );
+    } on DatabaseException catch (e) {
+      if (e.toString().contains('no such column: isDraft')) {
+        // patch any stray DBs on‑the‑fly
+        await db.execute('ALTER TABLE bets ADD COLUMN isDraft INTEGER DEFAULT 0;');
+        await db.execute('ALTER TABLE bets ADD COLUMN syncedAt TEXT;');
+        return await db.query('bets', where: 'isDraft = ?', whereArgs: [1]);
+      }
+      rethrow;
+    }
+  }
+
+  /// Marks a draft as synced (sets isDraft = 0 and stamps syncedAt)
+  Future<void> markBetSynced(String userId, String eventId) async {
+    final db = await database;
+    await db.update(
+      'bets',
+      {
+        'isDraft': 0,
+        'syncedAt': DateTime.now().toIso8601String(),
+      },
       where: 'userId = ? AND eventId = ?',
       whereArgs: [userId, eventId],
     );

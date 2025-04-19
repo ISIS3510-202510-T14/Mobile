@@ -8,6 +8,7 @@ class MatchModel {
   final String sport;
   final LocationModel location;
   final DateTime startTime;
+  final DateTime? endTime;          // ← NEW – may be null on old data
   final String status;
   final String providerId;
   final String homeTeam;
@@ -34,6 +35,7 @@ class MatchModel {
     required this.sport,
     required this.location,
     required this.startTime,
+    this.endTime,
     required this.status,
     required this.providerId,
     required this.homeTeam,
@@ -79,6 +81,9 @@ class MatchModel {
           ? LocationModel.fromJson(json['location'])
           : LocationModel(lat: 0, lng: 0),
       startTime: DateTime.parse(json['startTime']),
+      endTime  : json['endTime'] != null
+          ? DateTime.parse(json['endTime'])
+          : null,
       status: json['status'] ?? '',
       providerId: json['providerId'] ?? '',
       homeTeam: json['homeTeam'] ?? '',
@@ -103,6 +108,7 @@ class MatchModel {
       'sport': sport,
       'location': location.toJson(), // Si en backend se espera un objeto anidado, se deja así
       'startTime': startTime.toIso8601String(),
+      if (endTime != null) 'endTime': endTime!.toIso8601String(),
       'status': status,
       'providerId': providerId,
       'homeTeam': homeTeam,

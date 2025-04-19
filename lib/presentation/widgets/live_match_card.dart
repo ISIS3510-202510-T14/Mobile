@@ -1,4 +1,5 @@
 // lib/widgets/live_match_card.dart
+import 'package:campus_picks/data/services/connectivity_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -135,7 +136,13 @@ class LiveMatchCard extends BaseMatchCard {
                 onPressed: () {
                   User? user = FirebaseAuth.instance.currentUser;
                   if (user != null) {
-                    final vm = BetViewModel(match: match, userId: user.uid);
+                    // inject connectivity from Provider
+                    final connectivity = context.read<ConnectivityNotifier>();
+                    final vm = BetViewModel(
+                    match: match,
+                    userId: user.uid,
+                    connectivity: connectivity,
+                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(
