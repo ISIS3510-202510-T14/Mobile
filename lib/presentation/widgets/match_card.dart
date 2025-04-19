@@ -1,15 +1,16 @@
+// lib/presentation/widgets/match_card.dart
+
 import 'package:flutter/material.dart';
-import '../../data/models/match_model.dart';
-import 'base_match_card.dart';
-import 'favorite_button.dart'; // Asegúrate de tener este widget implementado
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:campus_picks/presentation/screens/place_bet_view.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/models/match_model.dart';
 import '../viewmodels/bet_viewmodel.dart';
 import '../viewmodels/matches_view_model.dart';
-import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-
-
+import '../screens/place_bet_view.dart';
+import 'base_match_card.dart';
+import 'favorite_button.dart';
 
 class MatchCard extends BaseMatchCard {
   const MatchCard({Key? key, required MatchModel match})
@@ -17,139 +18,169 @@ class MatchCard extends BaseMatchCard {
 
   @override
   Widget buildMatchContent(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    // Subdued labels for date/time and venue
+    final smallLabel = theme.textTheme.bodySmall
+        ?.copyWith(color: colors.onSurface.withOpacity(0.6));
+
+    // Date/time strings
     final date = match.startTime;
-    final dateString = "${date.day}/${date.month}/${date.year}";
-    final timeString = "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+    final dateString = '${date.day}/${date.month}/${date.year}';
+    final timeString =
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
     return Stack(
+      clipBehavior: Clip.none,
       children: [
-        // Contenido principal
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Título del torneo centrado
-            Text(
-              '${match.homeTeam} vs ${match.awayTeam}',
-              textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            // Row para mostrar equipos y "VS" en el centro
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Equipo A
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                        CachedNetworkImage(
-                          imageUrl: match.logoTeamA, // Se asume que es una URL.
-                          width: 40,
-                          height: 40,
-                          placeholder: (context, url) => const CircularProgressIndicator(),
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.image_not_supported),
-                        ),
-                      const SizedBox(height: 8),
-                      Text(
-                        match.homeTeam,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                // Texto "VS"
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text('VS'),
-                ),
-                // Equipo B
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                        CachedNetworkImage(
-                          imageUrl: match.logoTeamB, // Se asume que es una URL.
-                          width: 40,
-                          height: 40,
-                          placeholder: (context, url) => const CircularProgressIndicator(),
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.image_not_supported),
-                        ),
-                      const SizedBox(height: 8),
-                      Text(
-                        match.awayTeam,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Botón "Bet Now"
-            ElevatedButton(
-              onPressed: () {
-                User? user = FirebaseAuth.instance.currentUser;
-                if (user != null) {
-                  print('UID: ${user.uid}');
-                  BetViewModel betViewModel = BetViewModel(
-                    match: match,
-                    userId: user.uid,
-                  );
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BetScreen(viewModel: betViewModel),
-                    ),
-                  );
-                } else {
-                  print('No hay usuario autenticado');
-                }
-              },
-              child: const Text('Bet Now'),
-            ),
-            const SizedBox(height: 16),
-            // Información de fecha, hora y venue
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Date: $dateString, Time: $timeString",
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Venue: ${match.venue}",
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+        // Favorite star centered above card
+        Positioned(
+          top: -12,
+          left: 0,
+          right: 0,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Material(
+              color: Colors.transparent,
+              child: FavoriteButton(
+                initialFavorite: match.isFavorite,
+                onFavoriteChanged: (isFav) {
+                  Provider.of<MatchesViewModel>(context, listen: false)
+                      .toggleFavorite(match.eventId, isFav, match);
+                },
               ),
             ),
-          ],
+          ),
         ),
-        // Botón de favorito posicionado en la esquina superior derecha
-        Positioned(
-          top: 8,
-          right: 8,
-          child: FavoriteButton(
-            initialFavorite: match.isFavorite,
-            onFavoriteChanged: (isFav) {
-              // Aquí llama a tu lógica para guardar el estado del favorito (por ej. en FavoriteRepository o ViewModel)
-              Provider.of<MatchesViewModel>(context, listen: false).toggleFavorite(match.eventId, isFav, match);
 
-              print("Match ${match.eventId} favorited: $isFav");
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final totalWidth = constraints.maxWidth;
+              const vsColumnWidth = 40.0;
+              final halfWidth = (totalWidth - vsColumnWidth) / 2;
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Team icons + VS row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left team
+                      SizedBox(
+                        width: halfWidth,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: _teamIconColumn(
+                            context,
+                            match.logoTeamA,
+                            match.homeTeam,
+                          ),
+                        ),
+                      ),
+
+                      // VS label
+                      SizedBox(
+                        width: vsColumnWidth,
+                        child: Center(
+                          child: Text(
+                            'VS',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+
+                      // Right team
+                      SizedBox(
+                        width: halfWidth,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: _teamIconColumn(
+                            context,
+                            match.logoTeamB,
+                            match.awayTeam,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // 'Bet Now' button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        User? user = FirebaseAuth.instance.currentUser;
+                        if (user != null) {
+                          final vm = BetViewModel(
+                            match: match,
+                            userId: user.uid,
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BetScreen(viewModel: vm),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Bet Now'),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Date & time
+                  Text(
+                    '$dateString  •  $timeString',
+                    style: smallLabel,
+                  ),
+
+                  // Venue
+                  Text(
+                    match.venue,
+                    style: smallLabel,
+                  ),
+                ],
+              );
             },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Team icon + name column (no aura)
+  Widget _teamIconColumn(
+      BuildContext context, String imageUrl, String teamName) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: 32,
+          height: 32,
+          placeholder: (_, __) =>
+              const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2)),
+          errorWidget: (_, __, ___) =>
+              const Icon(Icons.image_not_supported, size: 32),
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            teamName,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium,
           ),
         ),
       ],
