@@ -3,7 +3,6 @@ import 'package:campus_picks/presentation/widgets/sync_status_listener.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
-import 'presentation/screens/login_screen.dart'; // or your chosen screen
 import 'presentation/screens/place_bet_view.dart'; // or your chosen screen
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -14,6 +13,7 @@ import "data/models/match_model.dart";
 import 'dart:convert';
 import 'presentation/viewmodels/bet_viewmodel.dart';
 import 'data/services/connectivity_service.dart';
+import 'presentation/viewmodels/auth_wrapper_viewmodel.dart';
 import 'data/services/draft_sync_service.dart';  
 import 'presentation/viewmodels/user_bets_view_model.dart';
 
@@ -129,7 +129,7 @@ class MyApp extends StatelessWidget {
       scaffoldMessengerKey: scaffoldMessengerKey,
       title: 'Demo Matches',
       theme: AppTheme.darkTheme,
-      home: const LoginScreen(),
+      home: const AuthWrapper(),
     );
   }
 }
