@@ -22,7 +22,7 @@ class BackendApi {
         'balance': 0,
       }),
     );
-    if (res.statusCode != 201) {
+    if (res.statusCode != 201 || res.statusCode != 200) {
       throw Exception('Backend registration failed: ${res.body}');
     }
   }

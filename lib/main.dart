@@ -1,3 +1,5 @@
+import 'package:campus_picks/data/services/isolate_manager.dart';
+import 'package:campus_picks/presentation/widgets/sync_status_listener.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
@@ -12,6 +14,8 @@ import 'dart:convert';
 import 'presentation/viewmodels/bet_viewmodel.dart';
 import 'data/services/connectivity_service.dart';
 import 'presentation/viewmodels/auth_wrapper_viewmodel.dart';
+import 'data/services/draft_sync_service.dart';  
+import 'presentation/viewmodels/user_bets_view_model.dart';
 
 
 // Global instance for local notifications
@@ -19,6 +23,9 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+/// Root messenger – lets us show SnackBars from anywhere
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,8 +61,16 @@ Future<void> main() async {
           final matchData = data['match'] as Map<String, dynamic>;
           final match = MatchModel.fromJson(matchData);
           final userUID = data['userUID'] as String;
-          final betViewModel = BetViewModel(match: match, userId: userUID);
-
+          // get the ConnectivityNotifier from our Provider tree
+          final connectivity = Provider.of<ConnectivityNotifier>(
+            navigatorKey.currentContext!,
+            listen: false,
+          );
+          final betViewModel = BetViewModel(
+            match: match,
+            userId: userUID,
+            connectivity: connectivity,
+          );
           navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (context) => BetScreen(viewModel: betViewModel),
@@ -66,6 +81,9 @@ Future<void> main() async {
       }
     },
   );
+
+  // Spawn the background isolate for draft sync and other tasks
+  await IsolateManager().initialize();
 
   runApp(
     MultiProvider(
@@ -78,8 +96,25 @@ Future<void> main() async {
           create: (_) => ConnectivityNotifier(),
          
         ),
+        // Global service that auto‑syncs offline draft bets when connectivity returns
+        ChangeNotifierProvider(
+          lazy: false,
+          create: (ctx) {
+            final conn = ctx.read<ConnectivityNotifier>();
+            return DraftSyncService(connectivity: conn);
+          },
+        ),
+        // ────────────────────────────────────────────────────────────
+        // make UserBetsViewModel global so any screen (including PlaceBetView)
+        // can call context.read<UserBetsViewModel>()
+        ChangeNotifierProvider(
+          create: (ctx) => UserBetsViewModel(
+            connectivityNotifier: ctx.read<ConnectivityNotifier>(),
+          ),
+        ),
+        // ────────────────────────────────────────────────────────────
       ],
-      child: const MyApp(),
+      child: SyncStatusListener(child: const MyApp()),
     ),
   );
 }
@@ -91,6 +126,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       title: 'Demo Matches',
       theme: AppTheme.darkTheme,
       home: const AuthWrapper(),

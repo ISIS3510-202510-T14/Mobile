@@ -1,26 +1,33 @@
-import 'package:campus_picks/data/models/bet_model.dart';
-import 'package:campus_picks/data/repositories/bet_repository.dart';
-import 'package:campus_picks/theme/spacing.dart';
+// lib/presentation/screens/place_bet_view.dart
+// UPDATED – adds confirmation dialog, offline draft flag, and unconditional pop
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:campus_picks/theme/spacing.dart';
+import 'package:campus_picks/theme/app_shapes.dart';
+import 'package:campus_picks/data/services/connectivity_service.dart';
+import 'package:provider/provider.dart';
 import '../viewmodels/bet_viewmodel.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../viewmodels/user_bets_view_model.dart';
 
 /// Formats numeric input as US currency with commas and two decimals
 class CurrencyInputFormatter extends TextInputFormatter {
-  final NumberFormat _formatter = NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2);
+  final NumberFormat _formatter =
+      NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2);
 
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
-    // Strip non-numeric characters
     String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return TextEditingValue(
-      text: _formatter.format(0),
-      selection: TextSelection.collapsed(offset: _formatter.format(0).length),
-    );
+    if (digits.isEmpty) {
+      final zero = _formatter.format(0);
+      return TextEditingValue(
+        text: zero,
+        selection: TextSelection.collapsed(offset: zero.length),
+      );
+    }
     double value = double.parse(digits) / 100;
     String formatted = _formatter.format(value);
     return TextEditingValue(
@@ -41,178 +48,177 @@ class BetScreen extends StatefulWidget {
 
 class _BetScreenState extends State<BetScreen> {
   final _formKey = GlobalKey<FormState>();
-  // Initialize with $0.00 by default
   final TextEditingController _amountController = TextEditingController(
-    text: NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2).format(0),
+    text: NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2)
+        .format(0),
   );
   String? selectedTeam;
+  late ConnectivityNotifier connectivity;
 
-  Future<void> _placeBet(double amount) async {
-    final url = Uri.parse('http://localhost:8000/api/bets');
-    final odds = selectedTeam == widget.viewModel.match.homeTeam
-        ? widget.viewModel.oddsA
-        : widget.viewModel.oddsB;
-    final body = jsonEncode({
-      "userId": widget.viewModel.userId,
-      "eventId": widget.viewModel.match.acidEventId,
-      "stake": amount,
-      "odds": odds,
-      "team": selectedTeam,
-    });
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      );
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        final repo = BetRepository();
-        await repo.insertBet(
-          BetModel(
-            betId: data['betId'],
-            userId: widget.viewModel.userId,
-            eventId: widget.viewModel.match.eventId,
-            team: selectedTeam!,
-            stake: amount,
-            odds: odds,
-            status: 'placed',
-            createdAt: DateTime.parse(data['timestamp']),
-            updatedAt: DateTime.parse(data['timestamp']),
-          ),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-            content: const Text('Bet placed successfully'),
-          ),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Theme.of(context).colorScheme.error,
-            content: const Text('Failed to place bet'),
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Theme.of(context).colorScheme.error,
-          content: Text('Error: $e'),
-        ),
-      );
-    }
+  @override
+  void initState() {
+    super.initState();
+    widget.viewModel.addListener(_onVmMessage);
   }
 
-  void _confirmBet() {
-    if (!_formKey.currentState!.validate()) return;
-    // Parse formatted string back to double
-    final raw = _amountController.text.replaceAll(RegExp(r'[^0-9.]'), '');
-    final amount = double.tryParse(raw) ?? 0;
+  @override
+  void dispose() {
+    widget.viewModel.removeListener(_onVmMessage);
+    super.dispose();
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Image.asset(
-          selectedTeam == widget.viewModel.match.homeTeam
-              ? widget.viewModel.match.logoTeamA
-              : widget.viewModel.match.logoTeamB,
-          width: 50,
-          height: 50,
-          errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.image_not_supported),
-        ),
-        content: Text(
-          'Are you sure you want to bet ${_amountController.text} on $selectedTeam '
-          'with odds of ${selectedTeam == widget.viewModel.match.homeTeam ? widget.viewModel.oddsA.toStringAsFixed(2) : widget.viewModel.oddsB.toStringAsFixed(2)}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _placeBet(amount);
-            },
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
+  void _onVmMessage() {
+    final msg = widget.viewModel.lastMessage;
+    if (msg != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+      widget.viewModel.lastMessage = null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    connectivity = context.watch<ConnectivityNotifier>();
+    final offline = !connectivity.isOnline;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final vm = widget.viewModel;
-    final spacing = const EdgeInsets.all(AppSpacing.l);
+    const spacing = EdgeInsets.all(AppSpacing.l);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Place bet')),
-      body: SingleChildScrollView(
-        padding: spacing,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ----- amount input -----
-              TextFormField(
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [CurrencyInputFormatter()],
-                textAlign: TextAlign.center,
-                style: theme.textTheme.displayLarge!.copyWith(color: colors.primary),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
+      body: Column(
+        children: [
+          if (offline)
+            Container(
+              height: 20,
+              width: double.infinity,
+              color: colors.primary,
+              alignment: Alignment.center,
+              child: Text(
+                'OFF‑LINE  •  saving draft bet',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: colors.onPrimary),
+              ),
+            ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: spacing,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ----- amount input -----
+                    TextFormField(
+                      controller: _amountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [CurrencyInputFormatter()],
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.displayLarge!
+                          .copyWith(color: colors.primary),
+                      decoration: const InputDecoration(border: InputBorder.none),
+                      validator: (value) {
+                        final raw =
+                            value?.replaceAll(RegExp(r'[^0-9.]'), '');
+                        final v = double.tryParse(raw ?? '');
+                        if (v == null || v <= 0) {
+                          return 'Enter a positive amount';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    // ----- team selector -----
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: AppSpacing.s,
+                      children: [
+                        _teamChip(
+                          team: vm.match.homeTeam,
+                          odds: vm.oddsA,
+                          selected: selectedTeam == vm.match.homeTeam,
+                          onTap: () =>
+                              setState(() => selectedTeam = vm.match.homeTeam),
+                          selectedColor: colors.secondary,
+                        ),
+                        _teamChip(
+                          team: vm.match.awayTeam,
+                          odds: vm.oddsB,
+                          selected: selectedTeam == vm.match.awayTeam,
+                          onTap: () =>
+                              setState(() => selectedTeam = vm.match.awayTeam),
+                          selectedColor: colors.tertiary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    // ----- submit -----
+                    ElevatedButton(
+                      onPressed: selectedTeam == null
+                          ? null
+                          : () async {
+                              if (!_formKey.currentState!.validate()) return;
+
+                              // ───── confirmation ─────
+                              final bool? ok = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) {
+                                  final cs = Theme.of(ctx).colorScheme;
+                                  return AlertDialog(
+                                    shape: AppShapes.dialogShape,
+                                    backgroundColor: cs.surface,
+                                    title: const Text('Confirm bet'),
+                                    content: const Text(
+                                        'Are you sure you want to place this bet?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: cs.primary,
+                                          foregroundColor: cs.onPrimary,
+                                          shape: AppShapes.buttonShape,
+                                        ),
+                                        child: const Text('Yes, place bet'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                              if (ok != true) return; // user cancelled
+
+                              // ───── proceed ─────
+                              final raw = _amountController.text
+                                  .replaceAll(RegExp(r'[^0-9.]'), '');
+                              final amount = double.tryParse(raw) ?? 0;
+                              final bool offline = !connectivity.isOnline;
+
+                              await widget.viewModel
+                                  .placeBet(amount, selectedTeam!, offline);
+                              if (offline) {
+                                final uid = FirebaseAuth.instance.currentUser!.uid;
+                                // ignore: use_build_context_synchronously
+                                context.read<UserBetsViewModel>()
+                                  .loadBets(uid, forceRemote: false);
+                              }
+
+                              // Always pop back after we queued the bet
+                              if (mounted) Navigator.pop(context);
+                            },
+                      child: const Text('Submit'),
+                    ),
+                  ],
                 ),
-                validator: (value) {
-                  final raw = value?.replaceAll(RegExp(r'[^0-9.]'), '');
-                  final v = double.tryParse(raw ?? '');
-                  if (v == null || v <= 0) return 'Enter a positive amount';
-                  return null;
-                },
               ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // ----- team selector -----
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: AppSpacing.s,
-                children: [
-                  _teamChip(
-                    team: vm.match.homeTeam,
-                    odds: vm.oddsA,
-                    selected: selectedTeam == vm.match.homeTeam,
-                    onTap: () => setState(() => selectedTeam = vm.match.homeTeam),
-                    selectedColor: colors.secondary,
-                  ),
-                  _teamChip(
-                    team: vm.match.awayTeam,
-                    odds: vm.oddsB,
-                    selected: selectedTeam == vm.match.awayTeam,
-                    onTap: () => setState(() => selectedTeam = vm.match.awayTeam),
-                    selectedColor: colors.tertiary,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.xl),
-
-              // ----- submit -----
-              ElevatedButton(
-                onPressed: selectedTeam == null ? null : _confirmBet,
-                child: const Text('Submit'),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -248,9 +254,7 @@ class _BetScreenState extends State<BetScreen> {
             Text(
               odds.toStringAsFixed(2),
               style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colors.onSurface,
-              ),
+                  fontWeight: FontWeight.w600, color: colors.onSurface),
             ),
           ],
         ),
