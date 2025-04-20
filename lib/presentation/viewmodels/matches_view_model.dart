@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:campus_picks/data/models/location_model.dart';
 import 'package:campus_picks/data/repositories/auth_repository.dart';
+import 'package:campus_picks/data/repositories/error_log_repository.dart';
 import 'package:campus_picks/data/repositories/favorite_repository.dart';
 import 'package:campus_picks/data/repositories/match_repository.dart';
 import 'package:campus_picks/data/services/auth.dart';
@@ -34,62 +35,77 @@ class MatchesViewModel extends ChangeNotifier {
   /// Fetches events from the API endpoint using a GET request.
   /// Optional query parameters: [sport] and [startDate].
   Future<void> fetchMatches({String? sport, DateTime? startDate}) async {
-  print('[fetchMatches] Iniciando método...');
+    print('[fetchMatches] Iniciando método...');
 
-  // Construir parámetros de consulta
-  final queryParameters = {
-    if (sport != null) 'sport': sport,
-    if (startDate != null) 'startDate': startDate.toIso8601String(),
-  };
-  print('[fetchMatches] Parámetros de consulta: $queryParameters');
+    // Construir parámetros de consulta
+    final queryParameters = {
+      if (sport != null) 'sport': sport,
+      if (startDate != null) 'startDate': startDate.toIso8601String(),
+    };
+    print('[fetchMatches] Parámetros de consulta: $queryParameters');
 
-  // Usar Uri.http para HTTP (no https) en localhost
-  final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
-  print('[fetchMatches] URI construido: $uri');
+    // Usar Uri.http para HTTP (no https) en localhost
+    final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
+    print('[fetchMatches] URI construido: $uri');
 
-  try {
-    final response = await http.get(uri);
-    print('[fetchMatches] Código de estado: ${response.statusCode}');
-    print('[fetchMatches] Body de la respuesta: ${response.body}');
+    try {
+      final response = await http.get(uri);
+      print('[fetchMatches] Código de estado: ${response.statusCode}');
+      print('[fetchMatches] Body de la respuesta: ${response.body}');
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      print('[fetchMatches] JSON decodificado: $data');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('[fetchMatches] JSON decodificado: $data');
 
-      if (!data.containsKey('events')) {
-        print('[fetchMatches] La clave "events" no existe en la respuesta');
-        throw Exception('La respuesta no contiene "events".');
+        if (!data.containsKey('events')) {
+          print('[fetchMatches] La clave "events" no existe en la respuesta');
+          throw Exception('La respuesta no contiene "events".');
+        }
+
+        final events = data['events'] as List;
+        print('[fetchMatches] Cantidad de eventos: ${events.length}');
+
+        // Usamos el factory del modelo para parsear cada evento
+        List<MatchModel> matches = events.map((e) {
+          return MatchModel.fromJson(e as Map<String, dynamic>);
+        }).toList();
+
+        // Separar según status
+        liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
+        upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+        finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
+
+        print('[fetchMatches] Petición exitosa. Notificando listeners...');
+        notifyListeners();
+      } else {
+        print('[fetchMatches] Respuesta != 200. Lanzando excepción...');
+        // Registrar status inesperado
+        await ErrorLogRepository().logError(
+          '/api/events',
+          'BadStatus${response.statusCode}',
+        );
+        throw Exception('Failed to fetch matches: ${response.statusCode}');
+      }
+    } catch (e, s) {
+      // Registrar la excepción
+      await ErrorLogRepository().logError(
+        '/api/events',
+        e.runtimeType.toString(),
+      );
+
+      // Fallback: generar datos locales
+      LocationModel locationUser;
+      try {
+        Position userPosition = await _determinePosition();
+        locationUser = LocationModel(
+          lat: userPosition.latitude,
+          lng: userPosition.longitude,
+        );
+      } catch (_) {
+        locationUser = LocationModel(lat: 4.6033508, lng: -74.0672136);
       }
 
-
-      final events = data['events'] as List;
-      print('[fetchMatches] Cantidad de eventos: ${events.length}');
-
-      // Usamos el factory del modelo para parsear cada evento
-      List<MatchModel> matches = events.map((e) {
-        // ensure new endTime reaches the model
-        final match = MatchModel.fromJson(e);
-        return match;
-      }).toList();
-
-
-      // Separar según status (asegúrate de que los status estén en minúsculas en el API)
-      liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
-      upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
-      finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
-
-      print('[fetchMatches] Petición exitosa. Notificando listeners...');
-      notifyListeners();
-    } else {
-      print('[fetchMatches] Respuesta != 200. Lanzando excepción...');
-      throw Exception('Failed to fetch matches');
-    }
-  } catch (e, s) {
-    LocationModel locationCityU = LocationModel(lat: 4.603350783618252, lng: -74.06721356441832);
-    Position userPosition = await _determinePosition();
-    LocationModel locationUser = LocationModel(lat: userPosition.latitude, lng: userPosition.longitude);
-    
-     final fallbackMatches = <MatchModel>[
+      final fallbackMatches = <MatchModel>[
         MatchModel(
           eventId: 'fallback-1',
           acidEventId: 'fallback-acid1',
@@ -98,13 +114,13 @@ class MatchesViewModel extends ChangeNotifier {
           location: locationUser,
           startTime: DateTime.now().add(const Duration(hours: 2)),
           status: 'upcoming',
-          logoTeamA: 'https://www.ingebook.com/ib/pimg/Ingebook/00100_0000002134_UNIANDES_Transparente.png',
-          logoTeamB: 'https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/0017/5608/brand.gif?itok=Xj1Bk5oB',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
           oddsA: 1.50,
           oddsB: 2.20,
+          logoTeamA: 'assets/images/team_alpha.png',
+          logoTeamB: 'assets/images/team_beta.png',
         ),
         MatchModel(
           eventId: 'fallback-2',
@@ -114,29 +130,29 @@ class MatchesViewModel extends ChangeNotifier {
           location: locationUser,
           startTime: DateTime.now(),
           status: 'live',
-          logoTeamA: 'https://www.ingebook.com/ib/pimg/Ingebook/00100_0000002134_UNIANDES_Transparente.png',
-          logoTeamB: 'https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/0017/5608/brand.gif?itok=Xj1Bk5oB',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
           oddsA: 1.80,
           oddsB: 2.05,
+          logoTeamA: 'assets/images/team_alpha.png',
+          logoTeamB: 'assets/images/team_beta.png',
         ),
-         MatchModel(
-          eventId: 'fallback-2',
-          acidEventId: 'fallback-acid2',
-          name: 'Fallback Match 2',
+        MatchModel(
+          eventId: 'fallback-3',
+          acidEventId: 'fallback-acid3',
+          name: 'Fallback Match 3',
           sport: 'basketball',
           location: locationUser,
           startTime: DateTime.now(),
           status: 'finished',
-          logoTeamA: 'https://www.ingebook.com/ib/pimg/Ingebook/00100_0000002134_UNIANDES_Transparente.png',
-          logoTeamB: 'https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/0017/5608/brand.gif?itok=Xj1Bk5oB',
           providerId: 'fallback-provider',
           homeTeam: 'Los Andes',
           awayTeam: 'La Sabana',
           oddsA: 1.25,
           oddsB: 3.10,
+          logoTeamA: 'assets/images/team_alpha.png',
+          logoTeamB: 'assets/images/team_beta.png',
         ),
       ];
 
@@ -145,9 +161,10 @@ class MatchesViewModel extends ChangeNotifier {
       finishedMatches = fallbackMatches.where((m) => m.status.toLowerCase() == 'finished').toList();
 
       notifyListeners();
-    rethrow;
+      rethrow;
+    }
   }
-}
+
 
   Future<Position> _determinePosition() async {
   bool serviceEnabled;
@@ -312,7 +329,7 @@ Future<void> _showLiveMatchNotification({
   );
 }
   
-  Future<void> sendUserLocation() async {
+Future<void> sendUserLocation() async {
   try {
     // Obtener la posición actual
     Position userPosition = await _determinePosition();
@@ -346,11 +363,25 @@ Future<void> _showLiveMatchNotification({
       body: json.encode(payload),
     );
 
+    if (response.statusCode != 200) {
+      // Registrar status inesperado
+      await ErrorLogRepository().logError(
+        '/api/location',
+        'BadStatus${response.statusCode}',
+      );
+    }
+
     print("Respuesta del servidor: ${response.statusCode} - ${response.body}");
   } catch (e) {
+    // Registrar fallo en la petición
+    await ErrorLogRepository().logError(
+      '/api/location',
+      e.runtimeType.toString(),
+    );
     print("Error al enviar la ubicación: $e");
   }
 }
+
 
 Future<void> fetchMatchesWithFavorites({
   String? sport,

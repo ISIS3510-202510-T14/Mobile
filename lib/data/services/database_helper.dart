@@ -38,7 +38,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,                                   // <-- bump to v4
+      version: 5,                                 
       onCreate: _createDB,
       onUpgrade: (db, oldV, newV) async {
         if (oldV < 2) {
@@ -60,6 +60,17 @@ class DatabaseHelper {
            // v4 – support offline drafts
            await db.execute('ALTER TABLE bets ADD COLUMN isDraft INTEGER DEFAULT 0;');
            await db.execute('ALTER TABLE bets ADD COLUMN syncedAt TEXT;');
+        }
+        if (oldV < 5) {
+          // v5 – add error_logs table
+          await db.execute('''
+            CREATE TABLE error_logs (
+              id          INTEGER PRIMARY KEY AUTOINCREMENT,
+              endpoint    TEXT    NOT NULL,
+              error_type  TEXT    NOT NULL,
+              timestamp   TEXT    NOT NULL
+            );
+          ''');
         }
       },
     );
@@ -138,7 +149,19 @@ class DatabaseHelper {
       );
     ''';
     await db.execute(favoriteTable);
+
+    // define this at the top of your DatabaseHelper class
+    const errorLogsTable = '''
+      CREATE TABLE IF NOT EXISTS error_logs (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        endpoint    TEXT    NOT NULL,
+        error_type  TEXT    NOT NULL,
+        timestamp   TEXT    NOT NULL
+      );
+    ''';
+    await db.execute(errorLogsTable);
   }
+  
 
   // ************************************************************
   //   MATCHES  (single + batch + prune)
@@ -411,5 +434,31 @@ class DatabaseHelper {
       where: 'recommendationId = ?',
       whereArgs: [id],
     );
+  }
+
+  // ─────────────── ERROR LOGS HELPERS ───────────────
+  /// Insert a connection/error log into local storage.
+  Future<void> insertErrorLog(String endpoint, String errorType) async {
+    final db = await database;
+    await db.insert(
+      'error_logs',
+      {
+        'endpoint': endpoint,
+        'error_type': errorType,
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  /// Count all errors logged since [ago].
+  Future<int> countErrorsSince(Duration ago) async {
+    final db = await database;
+    final since = DateTime.now().toUtc().subtract(ago).toIso8601String();
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS count FROM error_logs WHERE timestamp >= ?',
+      [since],
+    );
+    // Sqflite.firstIntValue unwraps the single integer result
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 }

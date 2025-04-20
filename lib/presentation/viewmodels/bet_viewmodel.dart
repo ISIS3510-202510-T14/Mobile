@@ -1,5 +1,5 @@
 // lib/presentation/viewmodels/bet_viewmodel.dart
-// UPDATED – supports offline flag, writes isDraft, fixes syncDrafts, removes connectivity listener
+// UPDATED – supports offline flag, writes isDraft, logs HTTP & sync errors
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -9,12 +9,14 @@ import '../../data/models/bet_model.dart';
 import '../../data/models/match_model.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/repositories/bet_repository.dart';
+import '../../data/repositories/error_log_repository.dart';
 
 class BetViewModel extends ChangeNotifier {
   final MatchModel match;
   final String userId;
   final ConnectivityNotifier connectivity;
   final BetRepository _repo = BetRepository();
+  final ErrorLogRepository _errorRepo = ErrorLogRepository();
   late final double oddsA;
   late final double oddsB;
 
@@ -74,9 +76,19 @@ class BetViewModel extends ChangeNotifier {
           await _repo.insertBet(placed);
           lastMessage = 'Bet placed successfully';
         } else {
+          // log unexpected status codes
+          await _errorRepo.logError(
+            '/api/bets',
+            'BadStatus${response.statusCode}',
+          );
           lastMessage = 'Failed to place bet: ${response.statusCode}';
         }
       } catch (e) {
+        // log connectivity or other HTTP failures
+        await _errorRepo.logError(
+          '/api/bets',
+          e.runtimeType.toString(),
+        );
         lastMessage = 'Error placing bet: $e';
       }
     } else {
@@ -87,15 +99,15 @@ class BetViewModel extends ChangeNotifier {
         team: team,
         stake: amount,
         odds: team == match.homeTeam ? oddsA : oddsB,
-        matchName : match.name,
-        sport     : match.sport, 
+        matchName: match.name,
+        sport: match.sport,
         status: 'placed',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         isDraft: 1,
       );
       await _repo.insertBet(draft);
-      _lastPlacedDraft = draft;            // make it available to PlaceBetView
+      _lastPlacedDraft = draft; // make it available to PlaceBetView
       lastMessage = 'Bet saved locally – will sync when back online';
     }
 
@@ -124,8 +136,19 @@ class BetViewModel extends ChangeNotifier {
         );
         if (response.statusCode == 201) {
           await _repo.markBetAsSynced(d);
+        } else {
+          // log unexpected status
+          await _errorRepo.logError(
+            '/api/bets',
+            'SyncBadStatus${response.statusCode}',
+          );
         }
-      } catch (_) {
+      } catch (e) {
+        // log connectivity or other HTTP failures
+        await _errorRepo.logError(
+          '/api/bets',
+          e.runtimeType.toString(),
+        );
         // leave it for next retry
       }
     }

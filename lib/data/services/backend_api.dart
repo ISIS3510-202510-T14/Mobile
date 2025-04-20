@@ -1,5 +1,8 @@
+// lib/data/services/backend_api.dart
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../repositories/error_log_repository.dart';
 
 class BackendApi {
   static const _base = 'http://localhost:8000/api';
@@ -11,19 +14,25 @@ class BackendApi {
     String? name,
     String? phone,
   }) async {
-    final res = await http.post(
-      Uri.parse('$_base/users'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'user_id': uid,
-        'email' : email,
-        'name'  : name,
-        'phone' : phone,
-        'balance': 0,
-      }),
-    );
-    if (res.statusCode != 201 || res.statusCode != 200) {
-      throw Exception('Backend registration failed: ${res.body}');
+    try {
+      final res = await http.post(
+        Uri.parse('$_base/users'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': uid,
+          'email': email,
+          'name': name,
+          'phone': phone,
+          'balance': 0,
+        }),
+      );
+      if (res.statusCode != 201 && res.statusCode != 200) {
+        throw Exception('Backend registration failed: ${res.body}');
+      }
+    } catch (e) {
+      await ErrorLogRepository()
+          .logError('/api/users', e.runtimeType.toString());
+      rethrow;
     }
   }
 
@@ -31,9 +40,16 @@ class BackendApi {
   /// • 200 OK  → user exists ‑ continue
   /// • 404     → uid not found ‑ treat as login error
   static Future<void> verifyLogin(String uid) async {
-    final res = await http
-        .get(Uri.parse('$_base/auth/login').replace(queryParameters: {'uid': uid}));
-    if (res.statusCode == 200) return;
-    throw Exception('User does not exist in backend');
+    try {
+      final res = await http
+          .get(Uri.parse('$_base/auth/login')
+              .replace(queryParameters: {'uid': uid}));
+      if (res.statusCode == 200) return;
+      throw Exception('User does not exist in backend');
+    } catch (e) {
+      await ErrorLogRepository()
+          .logError('/api/auth/login', e.runtimeType.toString());
+      rethrow;
+    }
   }
 }
