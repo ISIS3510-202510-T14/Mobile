@@ -4,6 +4,8 @@ import '../../data/models/match_model.dart';
 import '../viewmodels/matches_view_model.dart';
 import '../widgets/match_card_factory.dart';
 import '../../data/services/connectivity_service.dart';
+import 'package:campus_picks/data/services/auth.dart';
+import 'package:campus_picks/presentation/screens/login_screen.dart';
 
 class MatchesView extends StatefulWidget {
   const MatchesView({Key? key}) : super(key: key);
@@ -112,6 +114,19 @@ class _MatchesViewState extends State<MatchesView>
           appBar: AppBar(
             title: const Text('Matches'),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.exit_to_app),
+                tooltip: 'Logout',
+                onPressed: () async {
+                  await authService.value.signOut();
+                  if (mounted) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => LoginScreen()),
+                    );
+                  }
+                },
+              ),
               IconButton(
                 icon: Icon(
                   _showOnlyFavorites ? Icons.star : Icons.star_border,
