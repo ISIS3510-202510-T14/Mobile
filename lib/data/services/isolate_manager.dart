@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../repositories/error_log_repository.dart';
 
 /// Types of background tasks
 enum TaskType { syncDrafts }
@@ -43,7 +44,11 @@ class IsolateManager {
   Future<dynamic> enqueue(TaskType type, dynamic payload) async {
     await _ready.future;
     final responsePort = ReceivePort();
-    final message = TaskMessage(type: type, payload: payload, replyTo: responsePort.sendPort);
+    final message = TaskMessage(
+      type: type,
+      payload: payload,
+      replyTo: responsePort.sendPort,
+    );
     _sendPort.send(message);
     final result = await responsePort.first;
     responsePort.close();
@@ -57,22 +62,29 @@ class IsolateManager {
 
     port.listen((raw) async {
       if (raw is TaskMessage) {
-        switch (raw.type) {
-          case TaskType.syncDrafts:
-            final drafts = raw.payload as List<dynamic>;
-            final List<Map<String, String>> succeeded = [];
-            for (final d in drafts) {
-              final map = d as Map<String, dynamic>;
-              final ok = await _sendDraft(map);
-              if (ok) {
-                succeeded.add({
-                  'userId': map['userId'] as String,
-                  'eventId': map['eventId'] as String,
-                });
+        try {
+          switch (raw.type) {
+            case TaskType.syncDrafts:
+              final drafts = raw.payload as List<dynamic>;
+              final List<Map<String, String>> succeeded = [];
+              for (final d in drafts) {
+                final map = d as Map<String, dynamic>;
+                final ok = await _sendDraft(map);
+                if (ok) {
+                  succeeded.add({
+                    'userId': map['userId'] as String,
+                    'eventId': map['eventId'] as String,
+                  });
+                }
               }
-            }
-            raw.replyTo.send(succeeded);
-            break;
+              raw.replyTo.send(succeeded);
+              break;
+          }
+        } catch (e) {
+          // Log any unexpected isolate errors
+          await ErrorLogRepository()
+              .logError('isolate_sync', e.runtimeType.toString());
+          raw.replyTo.send(<Map<String, String>>[]);
         }
       }
     });
@@ -89,9 +101,23 @@ class IsolateManager {
       'team': d['team'],
     });
     try {
-      final res = await http.post(url, headers: {'Content-Type': 'application/json'}, body: body);
-      return res.statusCode == 201;
-    } catch (_) {
+      final res = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      if (res.statusCode == 201) {
+        return true;
+      } else {
+        // Log unexpected status codes
+        await ErrorLogRepository()
+            .logError('/api/bets', 'BadStatus${res.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      // Log connectivity or other HTTP failures
+      await ErrorLogRepository()
+          .logError('/api/bets', e.runtimeType.toString());
       return false;
     }
   }
