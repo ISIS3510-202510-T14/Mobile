@@ -44,8 +44,8 @@ class MatchesViewModel extends ChangeNotifier {
     };
     print('[fetchMatches] Parámetros de consulta: $queryParameters');
 
-    // Usar Uri.http para HTTP (no https) en 10.0.2.2
-    final uri = Uri.http('10.0.2.2:8000', '/api/events', queryParameters);
+    // Usar Uri.http para HTTP (no https) en localhost
+    final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
     print('[fetchMatches] URI construido: $uri');
 
     try {
@@ -353,8 +353,8 @@ Future<void> sendUserLocation() async {
       "timestamp": timestamp,
     };
 
-    // Construir la URL de la API (en este caso, se usa http y 10.0.2.2)
-    final uri = Uri.http('10.0.2.2:8000', '/api/location');
+    // Construir la URL de la API (en este caso, se usa http y localhost)
+    final uri = Uri.http('localhost:8000', '/api/location');
 
     // Enviar la petición POST
     final response = await http.post(

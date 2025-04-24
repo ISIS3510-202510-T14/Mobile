@@ -58,7 +58,7 @@ class UserBetsViewModel extends ChangeNotifier {
     // ① TRY REMOTE (only if online & asked to)
     // ------------------------------------------------------------
     if (online && (forceRemote || _bets.isEmpty)) {
-      final host = '10.0.2.2:8000';
+      final host = 'localhost:8000';
       final uri  = Uri.http(host, '/api/bets/history', {'userId': userId});
 
       try {

@@ -92,7 +92,7 @@ class IsolateManager {
 
   /// Post a single draft bet; returns true if the backend accepted it.
   static Future<bool> _sendDraft(Map<String, dynamic> d) async {
-    final url = Uri.parse('http://10.0.2.2:8000/api/bets');
+    final url = Uri.parse('http://localhost:8000/api/bets');
     final body = jsonEncode({
       'userId': d['userId'],
       'eventId': d['eventId'],
