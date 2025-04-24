@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 import 'package:campus_picks/data/services/backend_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/services/connectivity_service.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -66,108 +67,142 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final connectivity = Provider.of<ConnectivityNotifier>(context);
+    final isOnline = connectivity.isOnline;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo
-                  Image.asset(
-                    'assets/images/logo_symbol.png',
-                    height: 100,
+          child: Column(
+            children: [
+              // Purple Banner if offline
+              if (!isOnline)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.purple.shade700,
+                  child: const Text(
+                    "You are offline. Some features are disabled.",
+                    style: TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
-
-                  // Email Input
-                  _buildTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    icon: Icons.email,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password Input
-                  _buildTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    icon: Icons.lock,
-                    obscureText: _obscurePassword,
-                    isPassword: true,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Forgot Password
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                "This functionality will be implemented soon"),
-                            duration: Duration(seconds: 2),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      child: Text(
-                        'Forgot Password?',
-                        style:
-                            textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Sign In Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _handleSignIn,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                ),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/images/logo_symbol.png',
+                          height: 100,
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text('Sign In',
-                          style: TextStyle(fontSize: 18)),
+                        const SizedBox(height: 32),
+
+                        // Email Field
+                        _buildTextField(
+                          controller: _emailController,
+                          label: 'Email',
+                          icon: Icons.email,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Password Field
+                        _buildTextField(
+                          controller: _passwordController,
+                          label: 'Password',
+                          icon: Icons.lock,
+                          obscureText: _obscurePassword,
+                          isPassword: true,
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Forgot Password
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      "This functionality will be implemented soon"),
+                                  duration: Duration(seconds: 2),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Forgot Password?',
+                              style: textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white70),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Sign In Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: isOnline ? _handleSignIn : _showOfflineMessage,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  isOnline ? Colors.purple : Colors.grey,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: const Text('Sign In',
+                                style: TextStyle(fontSize: 18)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Sign Up Link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Don't have an account?",
+                              style: textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.white70),
+                            ),
+                            TextButton(
+                              onPressed: isOnline ? _handleSignUp : _showOfflineMessage,
+                              child: Text(
+                                'Sign Up',
+                                style: TextStyle(
+                                    color: isOnline
+                                        ? Colors.purpleAccent
+                                        : Colors.grey),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Sign Up Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Don't have an account?",
-                        style: textTheme.bodyMedium
-                            ?.copyWith(color: Colors.white70),
-                      ),
-                      TextButton(
-                        onPressed: _handleSignUp,
-                        child: const Text('Sign Up',
-                            style: TextStyle(color: Colors.purpleAccent)),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  void _showOfflineMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("This feature is disabled while offline."),
+      ),
+    );
+  }
+
 
   Widget _buildTextField({
     required TextEditingController controller,

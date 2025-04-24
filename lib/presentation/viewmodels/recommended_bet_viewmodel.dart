@@ -25,7 +25,7 @@ class RecommendedBetsViewModel extends ChangeNotifier {
 
     final userId = FirebaseAuth.instance.currentUser?.uid;
     final url = Uri.parse(
-      'http://localhost:8000/api/events/recommended?userId=$userId',
+      'http://10.0.2.2:8000/api/events/recommended?userId=$userId',
     );
 
     try {

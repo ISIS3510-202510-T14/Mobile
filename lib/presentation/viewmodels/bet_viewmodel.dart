@@ -42,7 +42,7 @@ class BetViewModel extends ChangeNotifier {
 
     if (!offline) {
       // ---------------- ONLINE ----------------
-      final url = Uri.parse('http://localhost:8000/api/bets');
+      final url = Uri.parse('http://10.0.2.2:8000/api/bets');
       final odds = team == match.homeTeam ? oddsA : oddsB;
       final body = jsonEncode({
         "userId": userId,
@@ -119,7 +119,7 @@ class BetViewModel extends ChangeNotifier {
     final drafts = await _repo.bulkSyncDrafts();
 
     for (final d in drafts) {
-      final url = Uri.parse('http://localhost:8000/api/bets');
+      final url = Uri.parse('http://10.0.2.2:8000/api/bets');
       final body = jsonEncode({
         "userId": d.userId,
         "eventId": d.eventId, // send the draft's own eventId

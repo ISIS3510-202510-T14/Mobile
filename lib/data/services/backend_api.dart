@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../repositories/error_log_repository.dart';
 
 class BackendApi {
-  static const _base = 'http://localhost:8000/api';
+  static const _base = 'http://10.0.2.2:8000/api';
 
   /// POST /users      (used at sign‑up)
   static Future<void> registerUser({
