@@ -20,14 +20,16 @@ class RecommendedBetsScreen extends StatelessWidget {
 
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => RecommendedBetsViewModel()..fetchRecommendedBets()),
         ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
+        ChangeNotifierProvider(
+          create: (_) => RecommendedBetsViewModel()..fetchRecommendedBets(),
+        ),
       ],
       child: Scaffold(
         appBar: AppBar(title: const Text('Recommended Bets')),
         body: Column(
           children: [
-            // Banner de estado OFFLINE
+            // Connectivity banner
             Consumer<ConnectivityNotifier>(
               builder: (context, connectivity, _) {
                 if (!connectivity.isOnline) {
@@ -50,7 +52,7 @@ class RecommendedBetsScreen extends StatelessWidget {
               },
             ),
 
-            // Contenido de apuestas recomendadas
+            // Bets content
             Expanded(
               child: Consumer<RecommendedBetsViewModel>(
                 builder: (_, vm, __) {

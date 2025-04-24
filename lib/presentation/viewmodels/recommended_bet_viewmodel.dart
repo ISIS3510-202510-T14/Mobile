@@ -1,53 +1,68 @@
-// lib/presentation/viewmodels/recommended_bet_viewmodel.dart
-
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../data/models/recommended_bet_model.dart';
 import '../../data/repositories/error_log_repository.dart';
+import '../../data/repositories/recommended_bet_repository.dart';
 
 class RecommendedBetsViewModel extends ChangeNotifier {
   final ErrorLogRepository _errorRepo = ErrorLogRepository();
+  final RecommendedBetRepository _recommendedBetRepository = RecommendedBetRepository();
 
-  List<RecommendedBet> _recommendedBets = [];
+  List<RecommendedBet> recommendedBets = [];
   bool _loading = false;
   String? _error;
 
-  List<RecommendedBet> get recommendedBets => _recommendedBets;
   bool get loading => _loading;
   String? get error => _error;
+
+  RecommendedBetsViewModel();
 
   Future<void> fetchRecommendedBets() async {
     _loading = true;
     notifyListeners();
 
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    final url = Uri.parse(
-      'http://localhost:8000/api/events/recommended?userId=$userId',
-    );
-
     try {
-      final response = await http.get(url);
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final bool isOffline = connectivityResult == ConnectivityResult.none;
+      final userId = FirebaseAuth.instance.currentUser?.uid;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> betsJson = data['recommendedBets'] as List<dynamic>;
-        _recommendedBets = betsJson
-            .map((j) => RecommendedBet.fromJson(j as Map<String, dynamic>))
-            .toList();
-        _error = null;
+      print('Connectivity status: $connectivityResult');
+      print('Is offline: $isOffline');
+
+      if (isOffline) {
+        recommendedBets = await _recommendedBetRepository.getAllRecommendedBets();
       } else {
-        // Log unexpected status codes
-        await _errorRepo.logError(
-          '/api/events/recommended',
-          'BadStatus${response.statusCode}',
+        final url = Uri.parse(
+          'http://localhost:8000/api/events/recommended?userId=$userId',
         );
-        _error = 'Error: ${response.statusCode}';
+        final response = await http.get(url);
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final List<dynamic> betsJson = data['recommendedBets'] as List<dynamic>;
+          recommendedBets = betsJson
+              .map((j) => RecommendedBet.fromJson(j as Map<String, dynamic>))
+              .toList();
+          _error = null;
+
+          if (recommendedBets.isNotEmpty) {
+            for (var bet in recommendedBets) {
+              await _recommendedBetRepository.insertRecommendedBet(bet);
+            }
+          }
+        } else {
+          await _errorRepo.logError(
+            '/api/events/recommended',
+            'BadStatus${response.statusCode}',
+          );
+          _error = 'Error: ${response.statusCode}';
+        }
       }
     } catch (e) {
-      // Log exceptions (connectivity, parsing, etc.)
       await _errorRepo.logError(
         '/api/events/recommended',
         e.runtimeType.toString(),
