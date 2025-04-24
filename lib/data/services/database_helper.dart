@@ -216,6 +216,46 @@ class DatabaseHelper {
     );
   }
 
+  // ---------- BATCH INSERT + AUTO‑PRUNE para recommended_bets ----------
+Future<void> insertRecommendedBetsBatch(List<RecommendedBet> recommendedBets) async {
+  final db    = await database;
+  final batch = db.batch();
+
+  final now        = DateTime.now();
+  final dayBefore  = now.subtract(const Duration(days: 1));  // Un día antes
+  final dayAfter   = now.add(const Duration(days: 1));       // Un día después
+
+  for (final bet in recommendedBets) {
+    final createdAt = DateTime.parse(bet.createdAt.toString());
+    if (createdAt.isBefore(dayBefore) || createdAt.isAfter(dayAfter)) {
+      continue; // fuera de la ventana de ±1 día
+    }
+    batch.insert(
+      'recommended_bets',
+      bet.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  await batch.commit(noResult: true);
+
+  // Limpiar las apuestas recomendadas que son más antiguas de 1 día
+  await _pruneOldRecommendedBets();
+}
+
+// Eliminar las apuestas recomendadas viejas
+Future<void> _pruneOldRecommendedBets() async {
+  final db = await database;
+
+  // Eliminar las apuestas recomendadas que tienen más de 1 día
+  await db.delete(
+    'recommended_bets',
+    where: 'createdAt < ?',
+    whereArgs: [DateTime.now().subtract(const Duration(days: 1)).toIso8601String()],
+  );
+}
+
+
   // ---------- BATCH INSERT + AUTO‑PRUNE ----------
   Future<void> insertMatchesBatch(List<MatchModel> matches) async {
     final db    = await database;

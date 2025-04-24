@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/models/recommended_bet_model.dart';
 import '../viewmodels/recommended_bet_viewmodel.dart';
+import '../../data/services/connectivity_service.dart';
 
 class RecommendedBetsScreen extends StatelessWidget {
   const RecommendedBetsScreen({Key? key}) : super(key: key);
@@ -16,31 +17,69 @@ class RecommendedBetsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ChangeNotifierProvider(
-      create: (_) => RecommendedBetsViewModel()..fetchRecommendedBets(),
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => RecommendedBetsViewModel()..fetchRecommendedBets()),
+        ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
+      ],
       child: Scaffold(
         appBar: AppBar(title: const Text('Recommended Bets')),
-        body: Consumer<RecommendedBetsViewModel>(
-          builder: (_, vm, __) {
-            if (vm.loading) return const Center(child: CircularProgressIndicator());
-            if (vm.error != null) {
-              return Center(child: Text('Unable to fetch recommendations', style: theme.textTheme.bodyMedium));
-            }
-            final bets = vm.recommendedBets;
-            if (bets.isEmpty) {
-              return Center(child: Text('No recommendations', style: theme.textTheme.bodyMedium));
-            }
-            return ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              separatorBuilder: (_, __) => const SizedBox(height: 2),
-              itemCount: bets.length,
-              itemBuilder: (_, i) => _BetCard(bet: bets[i]),
-            );
-          },
+        body: Column(
+          children: [
+            // Banner de estado OFFLINE
+            Consumer<ConnectivityNotifier>(
+              builder: (context, connectivity, _) {
+                if (!connectivity.isOnline) {
+                  return Container(
+                    height: 20,
+                    width: double.infinity,
+                    color: theme.colorScheme.primary,
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'OFF‑LINE  •  using cached data',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+
+            // Contenido de apuestas recomendadas
+            Expanded(
+              child: Consumer<RecommendedBetsViewModel>(
+                builder: (_, vm, __) {
+                  if (vm.loading) return const Center(child: CircularProgressIndicator());
+                  if (vm.error != null) {
+                    return Center(child: Text('Unable to fetch recommendations', style: theme.textTheme.bodyMedium));
+                  }
+
+                  final bets = vm.recommendedBets;
+                  if (bets.isEmpty) {
+                    return Center(child: Text('No recommendations', style: theme.textTheme.bodyMedium));
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    separatorBuilder: (_, __) => const SizedBox(height: 2),
+                    itemCount: bets.length,
+                    itemBuilder: (_, i) => _BetCard(bet: bets[i]),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+
 }
 
 //──────────────────────────────────────────────────────── card ────
