@@ -109,7 +109,7 @@ class DatabaseHelper {
     // BETS --------------------------------------------
     const betsTable = '''
       CREATE TABLE bets (
-        betId     TEXT,
+        betId     TEXT PRIMARY KEY,
         userId    TEXT NOT NULL,
         eventId   TEXT NOT NULL,
         teamId    TEXT,
@@ -122,8 +122,7 @@ class DatabaseHelper {
         placedAt  TEXT,
         updatedAt TEXT,
         isDraft   INTEGER DEFAULT 0,
-        syncedAt  TEXT,
-        PRIMARY KEY (userId, eventId)
+        syncedAt  TEXT
       );
     ''';
     await db.execute(betsTable);
