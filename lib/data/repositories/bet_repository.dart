@@ -59,24 +59,22 @@ class BetRepository {
     /// Alias for bulk fetching drafts for syncing
     Future<List<BetModel>> bulkSyncDrafts() => getDraftBets();
 
-  // ──────────────────────────────────────────────────────────────────────
-  //  BULK SYNC  – called by UserBetsViewModel after a /api/bets/history
-  // ──────────────────────────────────────────────────────────────────────
+  /// Replaces all bets for [userId] in local storage with [fresh], deleting any old rows first.
   Future<void> replaceAllForUser(String userId, List<BetModel> fresh) async {
     final db = await _dbHelper.database;
 
-    await db.transaction((txn) async {
-      // 1) wipe previous bets for this user
-      await txn.delete('bets', where: 'userId = ?', whereArgs: [userId]);
+    // 1) delete any existing bets for this user
+    await db.delete(
+      'bets',
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
 
-      // 2) nothing new? we’re done
-      if (fresh.isEmpty) return;
-
-      // 3) insert – always stamping the correct userId
-      final batch = txn.batch();
+    // 2) insert fresh bets (if any)
+    if (fresh.isNotEmpty) {
+      final batch = db.batch();
       for (final b in fresh) {
-        final map = b.toJson()
-          ..['userId'] = userId;                // ←—— inject the real UID
+        final map = b.toJson()..['userId'] = userId;
         batch.insert(
           'bets',
           map,
@@ -84,6 +82,7 @@ class BetRepository {
         );
       }
       await batch.commit(noResult: true);
-    });
+    }
   }
+
 }
