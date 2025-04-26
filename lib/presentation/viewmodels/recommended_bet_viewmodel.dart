@@ -7,6 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../data/models/recommended_bet_model.dart';
 import '../../data/repositories/error_log_repository.dart';
 import '../../data/repositories/recommended_bet_repository.dart';
+import 'package:campus_picks/src/config.dart';
 
 class RecommendedBetsViewModel extends ChangeNotifier {
   final ErrorLogRepository _errorRepo = ErrorLogRepository();
@@ -37,7 +38,7 @@ class RecommendedBetsViewModel extends ChangeNotifier {
         recommendedBets = await _recommendedBetRepository.getAllRecommendedBets();
       } else {
         final url = Uri.parse(
-          'http://localhost:8000/api/events/recommended?userId=$userId',
+          '${Config.apiBaseUrl}/api/events/recommended?userId=$userId',
         );
         final response = await http.get(url);
 
