@@ -7,16 +7,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';                   // ← added
 import 'package:newrelic_mobile/newrelic_mobile.dart';           // ← added
-import 'package:newrelic_mobile/config.dart';                   // ← added
+import 'package:newrelic_mobile/config.dart';                    // ← added
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';             // ← added
 
 import 'package:campus_picks/data/services/isolate_manager.dart';
 import 'package:campus_picks/data/services/connectivity_service.dart';
 import 'package:campus_picks/data/services/draft_sync_service.dart';
-import 'package:campus_picks/data/services/upload_service.dart';   // ← added
+import 'package:campus_picks/data/services/upload_service.dart';  // ← added
 
 import 'package:campus_picks/data/models/match_model.dart';
 
@@ -30,8 +31,6 @@ import 'package:campus_picks/presentation/viewmodels/user_bets_view_model.dart';
 import 'theme/app_theme.dart';
 import 'firebase_options.dart';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 /// Global instance for local notifications
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -42,7 +41,10 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
+  // 0) Load environment variables
   await dotenv.load(fileName: ".env");
+
+  // 1) Ensure Flutter binding
   WidgetsFlutterBinding.ensureInitialized();
 
   // ─── Firebase setup ──────────────────────────────────────────────────────────
@@ -64,7 +66,6 @@ Future<void> main() async {
   await flutterLocalNotificationsPlugin.initialize(
     initSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) {
-      // (your existing notification‐click handler)
       if (response.actionId == 'bet_now_action' && response.payload != null) {
         final data = jsonDecode(response.payload!);
         final matchData = data['match'] as Map<String, dynamic>;
@@ -91,55 +92,60 @@ Future<void> main() async {
   // ─── Background isolate (draft sync) ────────────────────────────────────────
   await IsolateManager().initialize();
 
-  // ─── 1) Initialize Workmanager ──────────────────────────────────────────────
+  // ─── 2) Initialize Workmanager ──────────────────────────────────────────────
   Workmanager().initialize(
     callbackDispatcher,
     isInDebugMode: false,
   );
 
-  // ─── 2) Schedule daily upload task ──────────────────────────────────────────
+  // ─── 3) Schedule periodic upload task ───────────────────────────────────────
   Workmanager().registerPeriodicTask(
     'dailyErrorUpload',      // unique name
     'uploadErrorLogs',       // handled in callbackDispatcher
-    frequency: const Duration(days: 1),
+    frequency: const Duration(days: 1),  // once a day
     constraints: Constraints(networkType: NetworkType.connected),
   );
 
-  // ─── 3) Start New Relic agent ────────────────────────────────────────────────
+  // ─── 4) Start New Relic agent via startAgent ────────────────────────────────
   final nrToken = Platform.isAndroid
-      ? dotenv.env['NEW_RELIC_ANDROID_APP_TOKEN']
-      : '<YOUR_IOS_MOBILE_TOKEN>';
+      ? dotenv.env['NEW_RELIC_ANDROID_APP_TOKEN']!
+      : dotenv.env['NEW_RELIC_IOS_APP_TOKEN']!;
   final nrConfig = Config(
-    accessToken: nrToken ?? '',
+    accessToken: nrToken,
     printStatementAsEventsEnabled: true,
   );
 
-  NewrelicMobile.instance.start(nrConfig, () {
-    // Once NR is booted, kick off the app
-    runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => UserViewModel(), lazy: false),
-          ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
-          ChangeNotifierProvider(
-            lazy: false,
-            create: (ctx) => DraftSyncService(
-              connectivity: ctx.read<ConnectivityNotifier>(),
-            ),
+  // Use `startAgent` when you only have the Config object:
+  await NewrelicMobile.instance.startAgent(nrConfig);
+
+  // ─── 5) Launch the app ──────────────────────────────────────────────────────
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserViewModel(), lazy: false),
+        ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
+        ChangeNotifierProvider(
+          lazy: false,
+          create: (ctx) => DraftSyncService(
+            connectivity: ctx.read<ConnectivityNotifier>(),
           ),
-          ChangeNotifierProvider(
-            create: (ctx) => UserBetsViewModel(
-              connectivityNotifier: ctx.read<ConnectivityNotifier>(),
-            ),
+        ),
+        ChangeNotifierProvider(
+          create: (ctx) => UserBetsViewModel(
+            connectivityNotifier: ctx.read<ConnectivityNotifier>(),
           ),
-        ],
-        child: SyncStatusListener(child: const MyApp()),
-      ),
-    );
-  });
+        ),
+      ],
+      child: SyncStatusListener(child: const MyApp()),
+    ),
+  );
+
+  // Temporary
+  await UploadService.uploadErrorLogs();
 }
 
 /// Routes background tasks to your upload service
+@pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task == 'uploadErrorLogs') {
@@ -151,7 +157,6 @@ void callbackDispatcher() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
