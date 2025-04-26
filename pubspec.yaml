@@ -23,6 +23,13 @@ dependencies:
   geolocator: ^9.0.2
   cached_network_image: ^3.4.1
   path: ^1.8.0
+  newrelic_mobile: ^1.1.10
+  workmanager:
+    git:
+      url: https://github.com/fluttercommunity/flutter_workmanager.git
+      path: workmanager
+      ref: main
+
 
 dev_dependencies:
   flutter_test:
@@ -33,4 +40,5 @@ flutter:
   uses-material-design: true
   assets:
   - assets/images/
+  - .env
 
