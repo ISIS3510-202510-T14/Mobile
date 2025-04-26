@@ -5,6 +5,8 @@ import 'dart:isolate';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../repositories/error_log_repository.dart';
+import 'metrics_management.dart' as metrics_management;
+import 'package:campus_picks/src/config.dart';
 
 /// Types of background tasks
 enum TaskType { syncDrafts }
@@ -92,7 +94,8 @@ class IsolateManager {
 
   /// Post a single draft bet; returns true if the backend accepted it.
   static Future<bool> _sendDraft(Map<String, dynamic> d) async {
-    final url = Uri.parse('http://localhost:8000/api/bets');
+    //final url = Uri.parse('http://localhost:8000/api/bets');
+    final url = Uri.parse('${Config.apiBaseUrl}/api/bets');
     final body = jsonEncode({
       'userId': d['userId'],
       'eventId': d['eventId'],
@@ -100,25 +103,44 @@ class IsolateManager {
       'odds': d['odds'],
       'team': d['team'],
     });
+
+    final stopwatch = Stopwatch()..start();
+    int? statusCode;
+    bool success = false;
+    String? error;
+
     try {
       final res = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
-      if (res.statusCode == 201) {
+      stopwatch.stop();
+
+      statusCode = res.statusCode;
+      success = res.statusCode == 201;
+
+      if (success) {
         return true;
       } else {
-        // Log unexpected status codes
-        await ErrorLogRepository()
-            .logError('/api/bets', 'BadStatus${res.statusCode}');
+        error = res.body;
+        await ErrorLogRepository().logError('/api/bets', 'BadStatus${res.statusCode}');
         return false;
       }
     } catch (e) {
-      // Log connectivity or other HTTP failures
-      await ErrorLogRepository()
-          .logError('/api/bets', e.runtimeType.toString());
+      stopwatch.stop();
+      error = e.toString();
+      await ErrorLogRepository().logError('/api/bets', e.runtimeType.toString());
       return false;
+    } finally {
+      await metrics_management.logApiMetric(
+        endpoint: '/api/bets',
+        duration: stopwatch.elapsedMilliseconds,
+        statusCode: statusCode,
+        success: success,
+        error: error,
+      );
     }
   }
+
 }

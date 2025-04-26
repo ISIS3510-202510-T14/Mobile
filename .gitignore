@@ -51,3 +51,5 @@ app.*.map.json
 .env
 
 android/app/build/
+/android/key.properties
+/android/app/campus_picks-keystore.jks

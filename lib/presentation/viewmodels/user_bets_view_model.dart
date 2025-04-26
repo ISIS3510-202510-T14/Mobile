@@ -15,6 +15,28 @@ import 'package:campus_picks/data/repositories/match_repository.dart';
 import 'package:campus_picks/data/repositories/error_log_repository.dart';
 
 import 'package:campus_picks/data/services/connectivity_service.dart';
+import 'package:campus_picks/data/services/metrics_management.dart' as metrics_management;
+import 'package:campus_picks/src/config.dart';
+
+// lib/presentation/viewmodels/user_bets_view_model.dart
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:campus_picks/data/models/bet_model.dart';
+import 'package:campus_picks/data/models/match_model.dart';
+import 'package:campus_picks/data/models/bet_with_match.dart';
+
+import 'package:campus_picks/data/repositories/bet_repository.dart';
+import 'package:campus_picks/data/repositories/match_repository.dart';
+import 'package:campus_picks/data/repositories/error_log_repository.dart';
+
+import 'package:campus_picks/data/services/connectivity_service.dart';
+import 'package:campus_picks/src/config.dart';
+
 
 class UserBetsViewModel extends ChangeNotifier {
   final BetRepository      _betRepo     = BetRepository();
@@ -52,6 +74,14 @@ class UserBetsViewModel extends ChangeNotifier {
     final bool online = connectivityNotifier.isOnline;
     List<BetModel> raw = [];
 
+    // Para métricas
+    final endpoint = '/api/bets/history';
+    final startTime = DateTime.now();
+    int duration = 0;
+    int? statusCode;
+    bool success = false;
+    String? error;
+
     // 1) Always load from local SQLite
     try {
       raw = await _betRepo.getBetsForUser(userId);
@@ -61,32 +91,43 @@ class UserBetsViewModel extends ChangeNotifier {
 
     // 2) Only fetch remote once per session or if explicitly forced
     if (online && (forceRemote || !_hasLoadedOnce)) {
-      final uri = Uri.http('localhost:8000', '/api/bets/history', {'userId': userId});
+      final uri = Uri
+        .parse('${Config.apiBaseUrl}/api/bets/history')
+        .replace(queryParameters: {'userId': userId});
       try {
         final res = await http.get(uri).timeout(const Duration(seconds: 6));
+
+        duration = DateTime.now().difference(startTime).inMilliseconds;
+        statusCode = res.statusCode;
+
         if (res.statusCode == 200) {
           final fresh = (jsonDecode(res.body)['bets'] as List)
               .map((j) => BetModel.fromJson(j as Map<String, dynamic>))
               .toList();
           raw = fresh;
           await _betRepo.replaceAllForUser(userId, raw);
-          // Mark as loaded only on successful 200 response
           _hasLoadedOnce = true;
+          success = true;
         } else {
-          await _errorRepo.logError(
-            '/api/bets/history',
-            'BadStatus${res.statusCode}',
-          );
-          throw HttpException('Backend returned ${res.statusCode}');
+          await _errorRepo.logError(endpoint, 'BadStatus${res.statusCode}');
+          error = 'Backend returned ${res.statusCode}';
+          throw HttpException(error!);
         }
       } catch (e) {
-        await _errorRepo.logError(
-          '/api/bets/history',
-          e.runtimeType.toString(),
-        );
+        duration = DateTime.now().difference(startTime).inMilliseconds;
+        await _errorRepo.logError(endpoint, e.runtimeType.toString());
+        error = e.toString();
         debugPrint('UserBetsViewModel: remote fetch failed → $e');
-        // don't set _hasLoadedOnce here so we retry on next call
       }
+
+      // Registrar la métrica
+      await metrics_management.logApiMetric(
+        endpoint: endpoint,
+        duration: duration,
+        statusCode: statusCode,
+        success: success,
+        error: error,
+      );
     }
 
     // 3) Enrich with match data and update UI
@@ -103,4 +144,5 @@ class UserBetsViewModel extends ChangeNotifier {
     _loading = false;
     notifyListeners();
   }
+
 }
