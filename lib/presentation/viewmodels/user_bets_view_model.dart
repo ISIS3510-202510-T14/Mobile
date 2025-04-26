@@ -15,6 +15,8 @@ import 'package:campus_picks/data/repositories/match_repository.dart';
 import 'package:campus_picks/data/repositories/error_log_repository.dart';
 
 import 'package:campus_picks/data/services/connectivity_service.dart';
+import 'package:campus_picks/src/config.dart';
+
 
 class UserBetsViewModel extends ChangeNotifier {
   final BetRepository      _betRepo     = BetRepository();
@@ -61,7 +63,11 @@ class UserBetsViewModel extends ChangeNotifier {
 
     // 2) Only fetch remote once per session or if explicitly forced
     if (online && (forceRemote || !_hasLoadedOnce)) {
-      final uri = Uri.http('localhost:8000', '/api/bets/history', {'userId': userId});
+      //final uri = Uri.http('localhost:8000', '/api/bets/history', {'userId': userId});
+      // Ahora usando Config.apiBaseUrl:
+      final uri = Uri
+        .parse('${Config.apiBaseUrl}/api/bets/history')
+        .replace(queryParameters: {'userId': userId});
       try {
         final res = await http.get(uri).timeout(const Duration(seconds: 6));
         if (res.statusCode == 200) {

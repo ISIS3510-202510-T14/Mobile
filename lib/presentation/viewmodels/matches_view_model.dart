@@ -15,6 +15,7 @@ import '/main.dart' show flutterLocalNotificationsPlugin;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/connectivity_service.dart';
+import 'package:campus_picks/src/config.dart';
 
 
 
@@ -45,8 +46,13 @@ class MatchesViewModel extends ChangeNotifier {
     print('[fetchMatches] Parámetros de consulta: $queryParameters');
 
     // Usar Uri.http para HTTP (no https) en localhost
-    final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
-    print('[fetchMatches] URI construido: $uri');
+    
+   //final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
+   // Construir la URI usando tu base definida en Config
+    final uri = Uri
+        .parse('${Config.apiBaseUrl}/api/events')
+        .replace(queryParameters: queryParameters);
+        print('[fetchMatches] URI construido: $uri');
 
     try {
       final response = await http.get(uri);
@@ -354,7 +360,8 @@ Future<void> sendUserLocation() async {
     };
 
     // Construir la URL de la API (en este caso, se usa http y localhost)
-    final uri = Uri.http('localhost:8000', '/api/location');
+    //final uri = Uri.http('localhost:8000', '/api/location');
+    final uri = Uri.parse('${Config.apiBaseUrl}/api/location');
 
     // Enviar la petición POST
     final response = await http.post(
