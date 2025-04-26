@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../repositories/error_log_repository.dart';
 import 'metrics_management.dart' as metrics_management;
+import 'package:campus_picks/src/config.dart';
 
 /// Types of background tasks
 enum TaskType { syncDrafts }
@@ -93,7 +94,8 @@ class IsolateManager {
 
   /// Post a single draft bet; returns true if the backend accepted it.
   static Future<bool> _sendDraft(Map<String, dynamic> d) async {
-    final url = Uri.parse('http://localhost:8000/api/bets');
+    //final url = Uri.parse('http://localhost:8000/api/bets');
+    final url = Uri.parse('${Config.apiBaseUrl}/api/bets');
     final body = jsonEncode({
       'userId': d['userId'],
       'eventId': d['eventId'],

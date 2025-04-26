@@ -2,6 +2,7 @@
 // UPDATED – supports offline flag, writes isDraft, logs HTTP & sync errors
 
 import 'dart:convert';
+import 'package:campus_picks/src/config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -43,7 +44,7 @@ class BetViewModel extends ChangeNotifier {
 
     if (!offline) {
       // ---------------- ONLINE ----------------
-      final url = Uri.parse('http://localhost:8000/api/bets');
+      final url = Uri.parse('${Config.apiBaseUrl}/api/bets');
       final odds = team == match.homeTeam ? oddsA : oddsB;
       final body = jsonEncode({
         "userId": userId,
@@ -133,7 +134,8 @@ class BetViewModel extends ChangeNotifier {
     final drafts = await _repo.bulkSyncDrafts();
 
     for (final d in drafts) {
-      final url = Uri.parse('http://localhost:8000/api/bets');
+      //final url = Uri.parse('http://localhost:8000/api/bets');
+      final url = Uri.parse('${Config.apiBaseUrl}/api/bets');
       final body = jsonEncode({
         "userId": d.userId,
         "eventId": d.eventId,

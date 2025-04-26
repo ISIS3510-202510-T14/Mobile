@@ -16,7 +16,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/connectivity_service.dart';
 import '../../../data/services/metrics_management.dart' as metrics_management;
-
+import 'package:campus_picks/src/config.dart';
 
 
 
@@ -45,8 +45,15 @@ class MatchesViewModel extends ChangeNotifier {
     if (startDate != null) 'startDate': startDate.toIso8601String(),
   };
 
-  final uri = Uri.http('localhost:8000', endpoint, queryParameters);
-  print('[fetchMatches] URI construido: $uri');
+
+    // Usar Uri.http para HTTP (no https) en localhost
+    
+   //final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
+   // Construir la URI usando tu base definida en Config
+    final uri = Uri
+        .parse('${Config.apiBaseUrl}/api/events')
+        .replace(queryParameters: queryParameters);
+        print('[fetchMatches] URI construido: $uri');
 
   final startTime = DateTime.now();
   int duration = 0;
@@ -370,8 +377,9 @@ Future<void> sendUserLocation() async {
       "timestamp": timestamp,
     };
 
-    // Construir la URL de la API
-    final uri = Uri.http('localhost:8000', '/api/location');
+    // Construir la URL de la API (en este caso, se usa http y localhost)
+    //final uri = Uri.http('localhost:8000', '/api/location');
+    final uri = Uri.parse('${Config.apiBaseUrl}/api/location');
 
     // Enviar la petición POST
     final response = await http.post(

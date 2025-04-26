@@ -1,62 +1,85 @@
-// lib/presentation/viewmodels/recommended_bet_viewmodel.dart
-
 import 'dart:convert';
 import 'package:campus_picks/data/services/metrics_management.dart' as metrics_management;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../data/models/recommended_bet_model.dart';
 import '../../data/repositories/error_log_repository.dart';
+import '../../data/repositories/recommended_bet_repository.dart';
+import 'package:campus_picks/src/config.dart';
 
 class RecommendedBetsViewModel extends ChangeNotifier {
   final ErrorLogRepository _errorRepo = ErrorLogRepository();
+  final RecommendedBetRepository _recommendedBetRepository = RecommendedBetRepository();
 
-  List<RecommendedBet> _recommendedBets = [];
+  List<RecommendedBet> recommendedBets = [];
   bool _loading = false;
   String? _error;
 
-  List<RecommendedBet> get recommendedBets => _recommendedBets;
   bool get loading => _loading;
   String? get error => _error;
+
+  RecommendedBetsViewModel();
 
   Future<void> fetchRecommendedBets() async {
     _loading = true;
     notifyListeners();
 
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    final endpoint = '/api/events/recommended';
-    final url = Uri.parse('http://localhost:8000$endpoint?userId=$userId');
-
-    final startTime = DateTime.now();
-    int duration;
-    bool success = false;
-    int? statusCode;
-    String? error;
-
     try {
-      final response = await http.get(url);
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final bool isOffline = connectivityResult == ConnectivityResult.none;
+      final userId = FirebaseAuth.instance.currentUser?.uid;
 
-      duration = DateTime.now().difference(startTime).inMilliseconds;
-      statusCode = response.statusCode;
+      print('Connectivity status: $connectivityResult');
+      print('Is offline: $isOffline');
+      
+      final startTime = DateTime.now();
+      int duration;
+      bool success = false;
+      int? statusCode;
+      String? error;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> betsJson = data['recommendedBets'] as List<dynamic>;
-        _recommendedBets = betsJson
-            .map((j) => RecommendedBet.fromJson(j as Map<String, dynamic>))
-            .toList();
-        _error = null;
-        success = true;
+      if (isOffline) {
+        recommendedBets = await _recommendedBetRepository.getAllRecommendedBets();
       } else {
-        error = 'BadStatus${response.statusCode}';
-        await _errorRepo.logError(endpoint, error);
-        _error = 'Error: ${response.statusCode}';
+        final url = Uri.parse(
+          '${Config.apiBaseUrl}/api/events/recommended?userId=$userId',
+        );
+        final response = await http.get(url);
+        
+        duration = DateTime.now().difference(startTime).inMilliseconds;
+        statusCode = response.statusCode;
+
+        if (statusCode == 200) {
+          final data = json.decode(response.body);
+          final List<dynamic> betsJson = data['recommendedBets'] as List<dynamic>;
+          recommendedBets = betsJson
+              .map((j) => RecommendedBet.fromJson(j as Map<String, dynamic>))
+              .toList();
+          _error = null;
+          success = true;
+
+          if (recommendedBets.isNotEmpty) {
+            for (var bet in recommendedBets) {
+              await _recommendedBetRepository.insertRecommendedBet(bet);
+            }
+          }
+        } else {
+          await _errorRepo.logError(
+            '/api/events/recommended',
+            'BadStatus${response.statusCode}',
+          );
+          _error = 'Error: ${response.statusCode}';
+        }
       }
     } catch (e) {
       duration = DateTime.now().difference(startTime).inMilliseconds;
-      error = e.runtimeType.toString();
-      await _errorRepo.logError(endpoint, error);
+      await _errorRepo.logError(
+        '/api/events/recommended',
+        e.runtimeType.toString(),
+      );
       _error = e.toString();
     }
 

@@ -4,9 +4,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../repositories/error_log_repository.dart';
 import 'metrics_management.dart' as metrics_management;
+import 'package:campus_picks/src/config.dart';
 
 class BackendApi {
-  static const _base = 'http://localhost:8000/api';
+  static const _base = '${Config.apiBaseUrl}/api';
 
   /// POST /users      (used at sign‑up)
   static Future<void> registerUser({
