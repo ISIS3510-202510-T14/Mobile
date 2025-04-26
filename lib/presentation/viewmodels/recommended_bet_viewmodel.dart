@@ -26,6 +26,11 @@ class RecommendedBetsViewModel extends ChangeNotifier {
   Future<void> fetchRecommendedBets() async {
     _loading = true;
     notifyListeners();
+    int duration = 0; // Initialize variables
+    bool success = false;
+    int? statusCode;
+    String? error;
+    final startTime = DateTime.now(); // Define startTime here
 
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
@@ -35,11 +40,7 @@ class RecommendedBetsViewModel extends ChangeNotifier {
       print('Connectivity status: $connectivityResult');
       print('Is offline: $isOffline');
       
-      final startTime = DateTime.now();
-      int duration;
-      bool success = false;
-      int? statusCode;
-      String? error;
+      
 
       if (isOffline) {
         recommendedBets = await _recommendedBetRepository.getAllRecommendedBets();
@@ -84,6 +85,7 @@ class RecommendedBetsViewModel extends ChangeNotifier {
     }
 
     // Log the API metric
+    final endpoint = '/api/events/recommended'; // Define the endpoint
     await metrics_management.logApiMetric(
       endpoint: endpoint,
       duration: duration,
@@ -93,8 +95,9 @@ class RecommendedBetsViewModel extends ChangeNotifier {
     );
 
     _loading = false;
-    print('Recommended bets fetched: $_recommendedBets');
+    print('Recommended bets fetched: $recommendedBets');
     await metrics_management.sendPendingMetrics();
     notifyListeners();
   }
+
 }

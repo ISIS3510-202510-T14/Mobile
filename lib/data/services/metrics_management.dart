@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'metrics_db_helper.dart';
 import 'package:intl/intl.dart';
 import '../repositories/error_log_repository.dart';
+import 'package:campus_picks/src/config.dart';
+
+
 
 Future<void> sendPendingMetrics() async {
   final metrics = await MetricsDatabase.getAllMetrics();
@@ -11,7 +14,7 @@ Future<void> sendPendingMetrics() async {
 
   if (metrics.isEmpty) return;
 
-  final url = Uri.parse('http://localhost:8000/analytics/metrics/');
+  final url = Uri.parse('${Config.apiBaseUrl}/analytics/metrics/');
   try {
     final response = await http.post(
       url,
