@@ -25,7 +25,6 @@ dependencies:
   path: ^1.8.0
   newrelic_mobile: 1.0.0
   workmanager: ^0.5.2
-  flutter_dotenv: ^5.2.1
 
 
 dev_dependencies:

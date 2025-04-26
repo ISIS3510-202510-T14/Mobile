@@ -110,7 +110,7 @@ Future<void> main() async {
       ? dotenv.env['NEW_RELIC_ANDROID_APP_TOKEN']
       : '<YOUR_IOS_MOBILE_TOKEN>';
   final nrConfig = Config(
-    accessToken: nrToken,
+    accessToken: nrToken ?? '',
     printStatementAsEventsEnabled: true,
   );
 
