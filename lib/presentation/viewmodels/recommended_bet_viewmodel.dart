@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:campus_picks/data/services/metrics_management.dart' as metrics_management;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -25,6 +26,11 @@ class RecommendedBetsViewModel extends ChangeNotifier {
   Future<void> fetchRecommendedBets() async {
     _loading = true;
     notifyListeners();
+    int duration = 0; // Initialize variables
+    bool success = false;
+    int? statusCode;
+    String? error;
+    final startTime = DateTime.now(); // Define startTime here
 
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
@@ -33,6 +39,8 @@ class RecommendedBetsViewModel extends ChangeNotifier {
 
       print('Connectivity status: $connectivityResult');
       print('Is offline: $isOffline');
+      
+      
 
       if (isOffline) {
         recommendedBets = await _recommendedBetRepository.getAllRecommendedBets();
@@ -41,14 +49,18 @@ class RecommendedBetsViewModel extends ChangeNotifier {
           '${Config.apiBaseUrl}/api/events/recommended?userId=$userId',
         );
         final response = await http.get(url);
+        
+        duration = DateTime.now().difference(startTime).inMilliseconds;
+        statusCode = response.statusCode;
 
-        if (response.statusCode == 200) {
+        if (statusCode == 200) {
           final data = json.decode(response.body);
           final List<dynamic> betsJson = data['recommendedBets'] as List<dynamic>;
           recommendedBets = betsJson
               .map((j) => RecommendedBet.fromJson(j as Map<String, dynamic>))
               .toList();
           _error = null;
+          success = true;
 
           if (recommendedBets.isNotEmpty) {
             for (var bet in recommendedBets) {
@@ -64,6 +76,7 @@ class RecommendedBetsViewModel extends ChangeNotifier {
         }
       }
     } catch (e) {
+      duration = DateTime.now().difference(startTime).inMilliseconds;
       await _errorRepo.logError(
         '/api/events/recommended',
         e.runtimeType.toString(),
@@ -71,7 +84,20 @@ class RecommendedBetsViewModel extends ChangeNotifier {
       _error = e.toString();
     }
 
+    // Log the API metric
+    final endpoint = '/api/events/recommended'; // Define the endpoint
+    await metrics_management.logApiMetric(
+      endpoint: endpoint,
+      duration: duration,
+      statusCode: statusCode,
+      success: success,
+      error: error,
+    );
+
     _loading = false;
+    print('Recommended bets fetched: $recommendedBets');
+    await metrics_management.sendPendingMetrics();
     notifyListeners();
   }
+
 }
