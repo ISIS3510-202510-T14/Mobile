@@ -10,6 +10,7 @@ import '../../data/models/match_model.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/repositories/bet_repository.dart';
 import '../../data/repositories/error_log_repository.dart';
+import '../../data/services/metrics_management.dart' as metrics_management;
 
 class BetViewModel extends ChangeNotifier {
   final MatchModel match;
@@ -46,11 +47,16 @@ class BetViewModel extends ChangeNotifier {
       final odds = team == match.homeTeam ? oddsA : oddsB;
       final body = jsonEncode({
         "userId": userId,
-        "eventId": match.acidEventId, // backend expects acidEventId
+        "eventId": match.acidEventId,
         "stake": amount,
         "odds": odds,
         "team": team,
       });
+
+      final stopwatch = Stopwatch()..start();
+      int? statusCode;
+      bool success = false;
+      String? error;
 
       try {
         final response = await http.post(
@@ -58,8 +64,12 @@ class BetViewModel extends ChangeNotifier {
           headers: {"Content-Type": "application/json"},
           body: body,
         );
+        stopwatch.stop();
 
-        if (response.statusCode == 201) {
+        statusCode = response.statusCode;
+        success = response.statusCode == 201;
+
+        if (success) {
           final data = jsonDecode(response.body);
           final placed = BetModel(
             betId: data['betId'],
@@ -76,20 +86,23 @@ class BetViewModel extends ChangeNotifier {
           await _repo.insertBet(placed);
           lastMessage = 'Bet placed successfully';
         } else {
-          // log unexpected status codes
-          await _errorRepo.logError(
-            '/api/bets',
-            'BadStatus${response.statusCode}',
-          );
+          error = response.body;
+          await _errorRepo.logError('/api/bets', 'BadStatus${response.statusCode}');
           lastMessage = 'Failed to place bet: ${response.statusCode}';
         }
       } catch (e) {
-        // log connectivity or other HTTP failures
-        await _errorRepo.logError(
-          '/api/bets',
-          e.runtimeType.toString(),
-        );
+        stopwatch.stop();
+        error = e.toString();
+        await _errorRepo.logError('/api/bets', e.runtimeType.toString());
         lastMessage = 'Error placing bet: $e';
+      } finally {
+        await metrics_management.logApiMetric(
+          endpoint: '/api/bets',
+          duration: stopwatch.elapsedMilliseconds,
+          statusCode: statusCode,
+          success: success,
+          error: error,
+        );
       }
     } else {
       // ---------------- OFF‑LINE ----------------
@@ -107,12 +120,13 @@ class BetViewModel extends ChangeNotifier {
         isDraft: 1,
       );
       await _repo.insertBet(draft);
-      _lastPlacedDraft = draft; // make it available to PlaceBetView
+      _lastPlacedDraft = draft;
       lastMessage = 'Bet saved locally – will sync when back online';
     }
 
     notifyListeners();
   }
+
 
   /// Called by a global DraftSyncService when connectivity is restored.
   Future<void> syncDrafts() async {
@@ -122,11 +136,16 @@ class BetViewModel extends ChangeNotifier {
       final url = Uri.parse('http://localhost:8000/api/bets');
       final body = jsonEncode({
         "userId": d.userId,
-        "eventId": d.eventId, // send the draft's own eventId
+        "eventId": d.eventId,
         "stake": d.stake,
         "odds": d.odds,
         "team": d.team,
       });
+
+      final stopwatch = Stopwatch()..start();
+      int? statusCode;
+      bool success = false;
+      String? error;
 
       try {
         final response = await http.post(
@@ -134,22 +153,35 @@ class BetViewModel extends ChangeNotifier {
           headers: {"Content-Type": "application/json"},
           body: body,
         );
-        if (response.statusCode == 201) {
+        stopwatch.stop();
+
+        statusCode = response.statusCode;
+        success = response.statusCode == 201;
+
+        if (success) {
           await _repo.markBetAsSynced(d);
         } else {
-          // log unexpected status
+          error = response.body;
           await _errorRepo.logError(
             '/api/bets',
             'SyncBadStatus${response.statusCode}',
           );
         }
       } catch (e) {
-        // log connectivity or other HTTP failures
+        stopwatch.stop();
+        error = e.toString();
         await _errorRepo.logError(
           '/api/bets',
           e.runtimeType.toString(),
         );
-        // leave it for next retry
+      } finally {
+        await metrics_management.logApiMetric(
+          endpoint: '/api/bets',
+          duration: stopwatch.elapsedMilliseconds,
+          statusCode: statusCode,
+          success: success,
+          error: error,
+        );
       }
     }
 
@@ -158,4 +190,5 @@ class BetViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
 }

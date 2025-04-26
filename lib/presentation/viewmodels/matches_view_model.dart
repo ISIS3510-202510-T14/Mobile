@@ -15,6 +15,8 @@ import '/main.dart' show flutterLocalNotificationsPlugin;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/connectivity_service.dart';
+import '../../../data/services/metrics_management.dart' as metrics_management;
+
 
 
 
@@ -35,135 +37,145 @@ class MatchesViewModel extends ChangeNotifier {
   /// Fetches events from the API endpoint using a GET request.
   /// Optional query parameters: [sport] and [startDate].
   Future<void> fetchMatches({String? sport, DateTime? startDate}) async {
-    print('[fetchMatches] Iniciando método...');
+  print('[fetchMatches] Iniciando método...');
 
-    // Construir parámetros de consulta
-    final queryParameters = {
-      if (sport != null) 'sport': sport,
-      if (startDate != null) 'startDate': startDate.toIso8601String(),
-    };
-    print('[fetchMatches] Parámetros de consulta: $queryParameters');
+  final endpoint = '/api/events';
+  final queryParameters = {
+    if (sport != null) 'sport': sport,
+    if (startDate != null) 'startDate': startDate.toIso8601String(),
+  };
 
-    // Usar Uri.http para HTTP (no https) en localhost
-    final uri = Uri.http('localhost:8000', '/api/events', queryParameters);
-    print('[fetchMatches] URI construido: $uri');
+  final uri = Uri.http('localhost:8000', endpoint, queryParameters);
+  print('[fetchMatches] URI construido: $uri');
+
+  final startTime = DateTime.now();
+  int duration = 0;
+  int? statusCode;
+  bool success = false;
+  String? error;
+
+  try {
+    final response = await http.get(uri);
+    duration = DateTime.now().difference(startTime).inMilliseconds;
+    statusCode = response.statusCode;
+
+    print('[fetchMatches] Código de estado: ${response.statusCode}');
+    print('[fetchMatches] Body de la respuesta: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (!data.containsKey('events')) {
+        throw Exception('La respuesta no contiene "events".');
+      }
+
+      final events = data['events'] as List;
+      List<MatchModel> matches = events.map((e) {
+        return MatchModel.fromJson(e as Map<String, dynamic>);
+      }).toList();
+
+      liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
+      upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+      finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
+
+      success = true;
+      notifyListeners();
+    } else {
+      error = 'BadStatus${response.statusCode}';
+      await ErrorLogRepository().logError(endpoint, error);
+      throw Exception('Failed to fetch matches: ${response.statusCode}');
+    }
+  } catch (e) {
+    duration = DateTime.now().difference(startTime).inMilliseconds;
+    error = e.runtimeType.toString();
+    await ErrorLogRepository().logError(endpoint, error);
 
     try {
-      final response = await http.get(uri);
-      print('[fetchMatches] Código de estado: ${response.statusCode}');
-      print('[fetchMatches] Body de la respuesta: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print('[fetchMatches] JSON decodificado: $data');
-
-        if (!data.containsKey('events')) {
-          print('[fetchMatches] La clave "events" no existe en la respuesta');
-          throw Exception('La respuesta no contiene "events".');
-        }
-
-        final events = data['events'] as List;
-        print('[fetchMatches] Cantidad de eventos: ${events.length}');
-
-        // Usamos el factory del modelo para parsear cada evento
-        List<MatchModel> matches = events.map((e) {
-          return MatchModel.fromJson(e as Map<String, dynamic>);
-        }).toList();
-
-        // Separar según status
-        liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
-        upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
-        finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
-
-        print('[fetchMatches] Petición exitosa. Notificando listeners...');
-        notifyListeners();
-      } else {
-        print('[fetchMatches] Respuesta != 200. Lanzando excepción...');
-        // Registrar status inesperado
-        await ErrorLogRepository().logError(
-          '/api/events',
-          'BadStatus${response.statusCode}',
-        );
-        throw Exception('Failed to fetch matches: ${response.statusCode}');
-      }
-    } catch (e, s) {
-      // Registrar la excepción
-      await ErrorLogRepository().logError(
-        '/api/events',
-        e.runtimeType.toString(),
+      Position userPosition = await _determinePosition();
+      final locationUser = LocationModel(
+        lat: userPosition.latitude,
+        lng: userPosition.longitude,
       );
 
-      // Fallback: generar datos locales
-      LocationModel locationUser;
-      try {
-        Position userPosition = await _determinePosition();
-        locationUser = LocationModel(
-          lat: userPosition.latitude,
-          lng: userPosition.longitude,
-        );
-      } catch (_) {
-        locationUser = LocationModel(lat: 4.6033508, lng: -74.0672136);
-      }
-
-      final fallbackMatches = <MatchModel>[
-        MatchModel(
-          eventId: 'fallback-1',
-          acidEventId: 'fallback-acid1',
-          name: 'Fallback Match 1',
-          sport: 'soccer',
-          location: locationUser,
-          startTime: DateTime.now().add(const Duration(hours: 2)),
-          status: 'upcoming',
-          providerId: 'fallback-provider',
-          homeTeam: 'Los Andes',
-          awayTeam: 'La Sabana',
-          oddsA: 1.50,
-          oddsB: 2.20,
-          logoTeamA: 'assets/images/team_alpha.png',
-          logoTeamB: 'assets/images/team_beta.png',
-        ),
-        MatchModel(
-          eventId: 'fallback-2',
-          acidEventId: 'fallback-acid2',
-          name: 'Fallback Match 2',
-          sport: 'football',
-          location: locationUser,
-          startTime: DateTime.now(),
-          status: 'live',
-          providerId: 'fallback-provider',
-          homeTeam: 'Los Andes',
-          awayTeam: 'La Sabana',
-          oddsA: 1.80,
-          oddsB: 2.05,
-          logoTeamA: 'assets/images/team_alpha.png',
-          logoTeamB: 'assets/images/team_beta.png',
-        ),
-        MatchModel(
-          eventId: 'fallback-3',
-          acidEventId: 'fallback-acid3',
-          name: 'Fallback Match 3',
-          sport: 'basketball',
-          location: locationUser,
-          startTime: DateTime.now(),
-          status: 'finished',
-          providerId: 'fallback-provider',
-          homeTeam: 'Los Andes',
-          awayTeam: 'La Sabana',
-          oddsA: 1.25,
-          oddsB: 3.10,
-          logoTeamA: 'assets/images/team_alpha.png',
-          logoTeamB: 'assets/images/team_beta.png',
-        ),
-      ];
-
-      liveMatches = fallbackMatches.where((m) => m.status.toLowerCase() == 'live').toList();
-      upcomingMatches = fallbackMatches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
-      finishedMatches = fallbackMatches.where((m) => m.status.toLowerCase() == 'finished').toList();
-
-      notifyListeners();
-      rethrow;
+      final fallbackMatches = _generateFallbackMatches(locationUser);
+      _assignMatchesByStatus(fallbackMatches);
+    } catch (_) {
+      final fallbackLocation = LocationModel(lat: 4.6033508, lng: -74.0672136);
+      final fallbackMatches = _generateFallbackMatches(fallbackLocation);
+      _assignMatchesByStatus(fallbackMatches);
     }
+
+    notifyListeners();
+    rethrow;
+  } finally {
+    await metrics_management.logApiMetric(
+      endpoint: endpoint,
+      duration: duration,
+      statusCode: statusCode,
+      success: success,
+      error: error,
+    );
   }
+}
+
+void _assignMatchesByStatus(List<MatchModel> matches) {
+  liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
+  upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+  finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
+}
+
+List<MatchModel> _generateFallbackMatches(LocationModel location) {
+  return [
+    MatchModel(
+      eventId: 'fallback-1',
+      acidEventId: 'fallback-acid1',
+      name: 'Fallback Match 1',
+      sport: 'soccer',
+      location: location,
+      startTime: DateTime.now().add(const Duration(hours: 2)),
+      status: 'upcoming',
+      providerId: 'fallback-provider',
+      homeTeam: 'Los Andes',
+      awayTeam: 'La Sabana',
+      oddsA: 1.50,
+      oddsB: 2.20,
+      logoTeamA: 'assets/images/team_alpha.png',
+      logoTeamB: 'assets/images/team_beta.png',
+    ),
+    MatchModel(
+      eventId: 'fallback-2',
+      acidEventId: 'fallback-acid2',
+      name: 'Fallback Match 2',
+      sport: 'football',
+      location: location,
+      startTime: DateTime.now(),
+      status: 'live',
+      providerId: 'fallback-provider',
+      homeTeam: 'Los Andes',
+      awayTeam: 'La Sabana',
+      oddsA: 1.80,
+      oddsB: 2.05,
+      logoTeamA: 'assets/images/team_alpha.png',
+      logoTeamB: 'assets/images/team_beta.png',
+    ),
+    MatchModel(
+      eventId: 'fallback-3',
+      acidEventId: 'fallback-acid3',
+      name: 'Fallback Match 3',
+      sport: 'basketball',
+      location: location,
+      startTime: DateTime.now(),
+      status: 'finished',
+      providerId: 'fallback-provider',
+      homeTeam: 'Los Andes',
+      awayTeam: 'La Sabana',
+      oddsA: 1.25,
+      oddsB: 3.10,
+      logoTeamA: 'assets/images/team_alpha.png',
+      logoTeamB: 'assets/images/team_beta.png',
+    ),
+  ];
+}
+
 
 
   Future<Position> _determinePosition() async {
@@ -330,6 +342,11 @@ Future<void> _showLiveMatchNotification({
 }
   
 Future<void> sendUserLocation() async {
+  final stopwatch = Stopwatch()..start();
+  int? statusCode;
+  bool success = false;
+  String? error;
+
   try {
     // Obtener la posición actual
     Position userPosition = await _determinePosition();
@@ -353,7 +370,7 @@ Future<void> sendUserLocation() async {
       "timestamp": timestamp,
     };
 
-    // Construir la URL de la API (en este caso, se usa http y localhost)
+    // Construir la URL de la API
     final uri = Uri.http('localhost:8000', '/api/location');
 
     // Enviar la petición POST
@@ -363,24 +380,38 @@ Future<void> sendUserLocation() async {
       body: json.encode(payload),
     );
 
-    if (response.statusCode != 200) {
-      // Registrar status inesperado
+    stopwatch.stop();
+    statusCode = response.statusCode;
+    success = response.statusCode == 200;
+
+    if (!success) {
+      error = response.body;
       await ErrorLogRepository().logError(
         '/api/location',
-        'BadStatus${response.statusCode}',
+        'BadStatus$response.statusCode',
       );
     }
 
     print("Respuesta del servidor: ${response.statusCode} - ${response.body}");
   } catch (e) {
-    // Registrar fallo en la petición
+    stopwatch.stop();
+    error = e.toString();
     await ErrorLogRepository().logError(
       '/api/location',
       e.runtimeType.toString(),
     );
     print("Error al enviar la ubicación: $e");
+  } finally {
+    await metrics_management.logApiMetric(
+      endpoint: '/api/location',
+      duration: stopwatch.elapsedMilliseconds,
+      statusCode: statusCode,
+      success: success,
+      error: error,
+    );
   }
 }
+
 
 
 Future<void> fetchMatchesWithFavorites({

@@ -19,6 +19,8 @@ import 'package:campus_picks/data/repositories/match_repository.dart';
 import 'package:campus_picks/data/repositories/error_log_repository.dart';
 
 import 'package:campus_picks/data/services/connectivity_service.dart';
+import 'package:campus_picks/data/services/metrics_management.dart' as metrics_management;
+
 
 class UserBetsViewModel extends ChangeNotifier {
   final BetRepository     _betRepo     = BetRepository();
@@ -54,17 +56,25 @@ class UserBetsViewModel extends ChangeNotifier {
     final bool online = connectivityNotifier.isOnline;
     List<BetModel> raw = [];
 
+    final stopwatch = Stopwatch();
+    int? statusCode;
+    bool success = false;
+    String? error;
+
     // ------------------------------------------------------------
     // ① TRY REMOTE (only if online & asked to)
     // ------------------------------------------------------------
     if (online && (forceRemote || _bets.isEmpty)) {
       final host = 'localhost:8000';
       final uri  = Uri.http(host, '/api/bets/history', {'userId': userId});
+      stopwatch.start();
 
       try {
-        final res = await http
-            .get(uri)
-            .timeout(const Duration(seconds: 6));
+        final res = await http.get(uri).timeout(const Duration(seconds: 6));
+
+        stopwatch.stop();
+        statusCode = res.statusCode;
+        success = res.statusCode == 200;
 
         if (res.statusCode == 200) {
           final fresh = (jsonDecode(res.body)['bets'] as List)
@@ -76,7 +86,7 @@ class UserBetsViewModel extends ChangeNotifier {
             await _betRepo.replaceAllForUser(userId, raw);
           }
         } else {
-          // Log unexpected status
+          error = res.body;
           await _errorRepo.logError(
             '/api/bets/history',
             'BadStatus${res.statusCode}',
@@ -84,12 +94,21 @@ class UserBetsViewModel extends ChangeNotifier {
           throw HttpException('Backend returned ${res.statusCode}');
         }
       } catch (e, s) {
-        // Log remote-fetch errors
+        stopwatch.stop();
+        error = e.toString();
         await _errorRepo.logError(
           '/api/bets/history',
           e.runtimeType.toString(),
         );
         debugPrint('UserBetsViewModel: remote fetch failed → $e\n$s');
+      } finally {
+        await metrics_management.logApiMetric(
+          endpoint: '/api/bets/history',
+          duration: stopwatch.elapsedMilliseconds,
+          statusCode: statusCode,
+          success: success,
+          error: error,
+        );
       }
     }
 
@@ -100,7 +119,6 @@ class UserBetsViewModel extends ChangeNotifier {
       try {
         raw = await _betRepo.getBetsForUser(userId);
       } catch (e, s) {
-        // Log SQLite errors
         await _errorRepo.logError(
           'local_db_bets',
           e.runtimeType.toString(),
@@ -120,11 +138,11 @@ class UserBetsViewModel extends ChangeNotifier {
       }));
       _error = null;
     } else if (_error == null) {
-      // No rows & no prior error → show friendly empty state
       _bets = [];
     }
 
     _loading = false;
     notifyListeners();
   }
+  
 }

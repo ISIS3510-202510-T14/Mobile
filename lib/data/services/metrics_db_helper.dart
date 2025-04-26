@@ -31,8 +31,10 @@ class MetricsDatabase {
   }
 
   static Future<void> insertMetric(Map<String, dynamic> metric) async {
+    print('[DB Helper] Inserting metric: $metric');
     final db = await database;
     await db.insert('metrics', metric);
+
   }
 
   static Future<List<Map<String, dynamic>>> getAllMetrics() async {
