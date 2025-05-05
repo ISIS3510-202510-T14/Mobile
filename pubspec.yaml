@@ -14,12 +14,21 @@ dependencies:
     sdk: flutter
   flutter_dotenv: ^5.2.1
   provider: ^6.1.2
-  
+  intl: ^0.17.0
+  sqflite: ^2.0.0+4
+  connectivity_plus: ^6.1.3
+  shared_preferences: ^2.2.2
   http: ^1.3.0
-
   flutter_local_notifications: ^19.0.0
-
   geolocator: ^9.0.2
+  cached_network_image: ^3.4.1
+  path: ^1.8.0
+  newrelic_mobile: ^1.1.10
+  workmanager:
+    git:
+      url: https://github.com/fluttercommunity/flutter_workmanager.git
+      path: workmanager
+      ref: main
 
 
 dev_dependencies:
@@ -30,10 +39,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/
-    - assets/images/logo_symbol.png
-    - assets/images/team_alpha.png
-    - assets/images/team_alpha1.png
-    - assets/images/team_beta.png
-    - assets/images/team_beta1.png
+  - assets/images/
+  - .env
+
 

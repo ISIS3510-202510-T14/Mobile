@@ -1,11 +1,10 @@
-import 'dart:convert';
-
 import 'package:campus_picks/data/repositories/auth_repository.dart';
+import 'package:campus_picks/data/services/auth.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+
 import '../viewmodels/user_viewmodel.dart';
-import 'login_screen.dart';
+import '../../data/services/backend_api.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   final String username;
@@ -13,13 +12,14 @@ class CreateAccountScreen extends StatefulWidget {
   final String password;
 
   const CreateAccountScreen({
-    Key? key,
+    super.key,
     required this.username,
     required this.email,
     required this.password,
-  }) : super(key: key);
+  });
 
   @override
+  // ignore: library_private_types_in_public_api
   _CreateAccountScreenState createState() => _CreateAccountScreenState();
 }
 
@@ -30,55 +30,56 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   String selectedGender = 'Male';
 
   void _submitForm() async {
-    if (fullNameController.text.isEmpty || phoneNumberController.text.isEmpty || selectedAge == null) {
+    if (fullNameController.text.isEmpty ||
+        phoneNumberController.text.isEmpty ||
+        selectedAge == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
       return;
     }
 
-    final response = await http.post(
-      Uri.parse('http://localhost:8000/api/users'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': widget.email,
-        'phone': phoneNumberController.text,
-        'name': fullNameController.text,
-        'balance': 0.0,
-      }),
-    );
+    final userId = authService.value.currentUser?.uid;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to get Firebase UID')),
+      );
+      return;
+    }
 
-    if (response.statusCode == 201) {
-      AuthRepository authRespository = AuthRepository();
+    try {
+      // Register in the backend ­(SQL) via the shared helper
+      await BackendApi.registerUser(
+        uid: userId,
+        email: widget.email,
+        name: fullNameController.text,
+        phone: phoneNumberController.text,
+      );
 
-      final responseData = jsonDecode(response.body);
-      String userId = responseData['userId'];
+      // Store the backend token locally
+      final authRepository = AuthRepository();
+      await authRepository.writeToken(widget.email, userId);
 
-      await authRespository.writeToken(widget.email, userId);	
+      // Persist in local view‑model
+      Provider.of<UserViewModel>(context, listen: false).addUser(
+        widget.username,
+        fullNameController.text,
+        phoneNumberController.text,
+        widget.email,
+        selectedAge!,
+        selectedGender,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('User created successfully: $userId')),
       );
 
       Navigator.pop(context);
-    
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to create user')),
+        SnackBar(content: Text(e.toString())),
       );
     }
-
-
-    Provider.of<UserViewModel>(context, listen: false).addUser(
-      widget.username,
-      fullNameController.text,
-      phoneNumberController.text,
-      widget.email,
-      selectedAge!,
-      selectedGender,
-    );
-
-
   }
 
   @override
@@ -108,7 +109,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             ),
             const SizedBox(height: 20),
             _buildTextField(fullNameController, "Full name", Icons.person),
-            _buildTextField(phoneNumberController, "Phone number", Icons.phone),
+            _buildTextField(
+                phoneNumberController, "Phone number", Icons.phone),
             _buildDropdownAge(),
             _buildDropdownGender(),
             const SizedBox(height: 20),
@@ -118,7 +120,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 backgroundColor: Colors.purple,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text("Submit", style: TextStyle(color: Colors.white, fontSize: 16)),
+              child: const Text(
+                "Submit",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
           ],
         ),
@@ -126,7 +131,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, IconData icon) {
+  Widget _buildTextField(
+      TextEditingController controller, String hint, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: TextField(
@@ -155,10 +161,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         dropdownColor: Colors.black,
         style: const TextStyle(color: Colors.white),
         items: List.generate(100, (index) => index + 1)
-            .map((age) => DropdownMenuItem<int>(
-                  value: age,
-                  child: Text(age.toString(), style: const TextStyle(color: Colors.white)),
-                ))
+            .map(
+              (age) => DropdownMenuItem<int>(
+                value: age,
+                child: Text(age.toString(),
+                    style: const TextStyle(color: Colors.white)),
+              ),
+            )
             .toList(),
         onChanged: (value) => setState(() => selectedAge = value),
         decoration: InputDecoration(
@@ -184,10 +193,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         dropdownColor: Colors.black,
         style: const TextStyle(color: Colors.white),
         items: ["Male", "Female", "Other"]
-            .map((gender) => DropdownMenuItem<String>(
-                  value: gender,
-                  child: Text(gender, style: const TextStyle(color: Colors.white)),
-                ))
+            .map(
+              (gender) => DropdownMenuItem<String>(
+                value: gender,
+                child: Text(gender,
+                    style: const TextStyle(color: Colors.white)),
+              ),
+            )
             .toList(),
         onChanged: (value) => setState(() => selectedGender = value!),
         decoration: InputDecoration(
@@ -195,7 +207,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           fillColor: Colors.grey[900],
           hintText: "Gender",
           hintStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: const Icon(Icons.person_outline, color: Colors.white70),
+          prefixIcon:
+              const Icon(Icons.person_outline, color: Colors.white70),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,

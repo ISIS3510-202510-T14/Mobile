@@ -1,11 +1,16 @@
 // lib/widgets/live_match_card.dart
+import 'package:campus_picks/data/services/connectivity_service.dart';
 import 'package:flutter/material.dart';
-import '../../data/models/match_model.dart';
-import 'base_match_card.dart';
-import 'package:campus_picks/presentation/screens/place_bet_view.dart';
-import '../viewmodels/bet_viewmodel.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:campus_picks/data/repositories/auth_repository.dart';
+import 'package:provider/provider.dart';
+
+import '../../data/models/match_model.dart';
+import '../viewmodels/bet_viewmodel.dart';
+import '../viewmodels/matches_view_model.dart';
+import '../screens/place_bet_view.dart';
+import 'base_match_card.dart';
+import 'favorite_button.dart';
 
 class LiveMatchCard extends BaseMatchCard {
   const LiveMatchCard({Key? key, required MatchModel match})
@@ -13,22 +18,24 @@ class LiveMatchCard extends BaseMatchCard {
 
   @override
   Widget buildMatchContent(BuildContext context) {
-    // Score actual (fallback a 0)
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    // Styles for small labels (less contrast)
+    final labelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: colors.onSurface.withOpacity(0.6),
+      fontSize: theme.textTheme.bodySmall!.fontSize! * 0.9,
+    );
+
     final scoreA = match.scoreTeamA ?? 0;
     final scoreB = match.scoreTeamB ?? 0;
-  
-
-
-    // Minuto actual o tiempo transcurrido
     final minute = match.minute ?? 0;
 
-    // Formateo de fecha y hora usando match.startTime
-    final dateString =
-        "${match.startTime.day}/${match.startTime.month}/${match.startTime.year}";
+    final date = match.startTime;
+    final dateString = "${date.day}/${date.month}/${date.year}";
     final timeString =
-        "${match.startTime.hour.toString().padLeft(2, '0')}:${match.startTime.minute.toString().padLeft(2, '0')}";
+        "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
 
-    // Indicador LIVE (icono y texto)
     Widget liveIndicator = Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -36,130 +43,150 @@ class LiveMatchCard extends BaseMatchCard {
         const SizedBox(width: 4),
         Text(
           "LIVE",
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: Colors.red,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        // Indicador LIVE arriba
-        liveIndicator,
-        const SizedBox(height: 8),
-        // Título del partido
-        Text(
-          '${match.homeTeam} vs ${match.awayTeam}',
-          textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        // Fila con la información de cada equipo
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            // Columna para el equipo A
-            Column(
-              children: [
-                Image.asset(
-                  match.logoTeamA,
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_not_supported),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  scoreA.toString(),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  match.homeTeam,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
+        // Favorite star centered above card
+        Positioned(
+          top: -12,
+          left: 0,
+          right: 0,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: FavoriteButton(
+              initialFavorite: match.isFavorite,
+              onFavoriteChanged: (isFav) {
+                Provider.of<MatchesViewModel>(context, listen: false)
+                    .toggleFavorite(match.eventId, isFav, match);
+              },
             ),
-            // Columna para el equipo B
-            Column(
-              children: [
-                Image.asset(
-                  match.logoTeamB,
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_not_supported),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  scoreB.toString(),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  match.awayTeam,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 8),
-        // Mostrar el minuto transcurrido (ejemplo: "53’")
-        Text(
-          "$minute’",
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: Colors.grey),
-        ),
-        const SizedBox(height: 12),
-        // Botón "Bet Now"
-        ElevatedButton(
-          onPressed: () {
-            AuthRepository authRepository = AuthRepository();
-            User? user = FirebaseAuth.instance.currentUser;
-            if (user?.email != null) {
-              authRepository.readToken(user!.email!).then((token) {
-                if (token != null) {
-                  print('Token: $token');
-                  
-                  BetViewModel betViewModel = BetViewModel(
-                      match: match,
-                      userId: token,
-                  );
 
-                  Navigator.push(
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              liveIndicator,
+              const SizedBox(height: 8),
+
+              // Teams + minute row, evenly split with center fixed width
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final totalWidth = constraints.maxWidth;
+                  const centerWidth = 40.0;
+                  final sideWidth = (totalWidth - centerWidth) / 2;
+                  return Row(
+                    children: [
+                      SizedBox(
+                        width: sideWidth,
+                        child: _buildTeamColumn(
+                          match.logoTeamA,
+                          scoreA.toString(),
+                          match.homeTeam,
+                          theme,
+                        ),
+                      ),
+                      SizedBox(
+                        width: centerWidth,
+                        child: Center(
+                          child: Text(
+                            '$minute’',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: colors.onSurface.withOpacity(0.6)),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: sideWidth,
+                        child: _buildTeamColumn(
+                          match.logoTeamB,
+                          scoreB.toString(),
+                          match.awayTeam,
+                          theme,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(dateString, style: labelStyle),
+                  const SizedBox(width: 8),
+                  Text(timeString, style: labelStyle),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(match.venue, style: labelStyle),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () {
+                  User? user = FirebaseAuth.instance.currentUser;
+                  if (user != null) {
+                    // inject connectivity from Provider
+                    final connectivity = context.read<ConnectivityNotifier>();
+                    final vm = BetViewModel(
+                    match: match,
+                    userId: user.uid,
+                    connectivity: connectivity,
+                    );
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => BetScreen(viewModel: betViewModel),
+                        builder: (_) => BetScreen(viewModel: vm),
                       ),
-                  );
-                } else {
-                  print('Token not found');
-                }
-              }).catchError((e) {
-                print('Error reading token: $e');
-              });
-            } else {
-              print('User email is null');
-            }
-            // Acción del botón (por ejemplo, navegar a la pantalla de detalles)
-          },
-          child: const Text('Bet Now'),
+                    );
+                  }
+                },
+                child: const Text('Bet Now'),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        // Información de fecha y hora
+      ],
+    );
+  }
+
+  Widget _buildTeamColumn(
+    String logoUrl,
+    String score,
+    String team,
+    ThemeData theme,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CachedNetworkImage(
+          imageUrl: logoUrl,
+          width: 32,
+          height: 32,
+          placeholder: (_, __) =>
+              const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2)),
+          errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported, size: 32),
+        ),
+        const SizedBox(height: 4),
         Text(
-          "Date: $dateString, Time: $timeString",
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
+          score,
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          team,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall,
         ),
       ],
     );

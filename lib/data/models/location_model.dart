@@ -17,4 +17,12 @@ class LocationModel {
     @override
   String toString() => 'Location(lat: $lat, lng: $lng)';
   
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lat': lat,
+      'lng': lng,
+    };
+  }
+  
 }

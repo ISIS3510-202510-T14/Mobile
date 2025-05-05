@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -8,11 +11,18 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Carga las propiedades
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+  load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.example.campus_picks"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
+   
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -33,14 +43,39 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+     signingConfigs {
+        create("release") {
+        keyAlias = keystoreProperties["keyAlias"] as String
+        keyPassword = keystoreProperties["keyPassword"] as String
+        storeFile = file(keystoreProperties["storeFile"] as String)
+        storePassword = keystoreProperties["storePassword"] as String
+        }
+  }
+
+    // buildTypes {
+    //     release {
+    //         // TODO: Add your own signing config for the release build.
+    //         // Signing with the debug keys for now, so `flutter run --release` works.
+    //         signingConfig = signingConfigs.getByName("debug")
+    //     }
+    // }
 
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-        }
+    getByName("debug") {
+      // sigue usando el debug.keystore por defecto
+      isDebuggable = true
     }
+    getByName("release") {
+      signingConfig = signingConfigs.getByName("release")
+      isMinifyEnabled = true       // opcional: R8/ProGuard
+      isShrinkResources = true     // opcional: elimina recursos no usados
+      proguardFiles(
+        getDefaultProguardFile("proguard-android.txt"),
+        "proguard-rules.pro"
+      )
+    }
+  }
+
 }
 
 flutter {

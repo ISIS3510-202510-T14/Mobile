@@ -1,4 +1,6 @@
 import 'location_model.dart';
+import 'dart:math';
+
 class MatchModel {
   final String eventId;
   final String acidEventId;
@@ -18,6 +20,12 @@ class MatchModel {
   final int? scoreTeamB;
   final int? minute;
   final DateTime dateTime = DateTime.now();
+  final String venue;
+  final double oddsA;
+  final double oddsB;
+  
+  // Nuevo campo opcional para marcar como favorito
+  bool isFavorite;
 
   MatchModel({
     required this.eventId,
@@ -33,32 +41,83 @@ class MatchModel {
     this.tournament = 'Default Tournament',
     this.logoTeamA = 'assets/images/team_alpha.png',
     this.logoTeamB = 'assets/images/team_beta.png',
-    this.scoreTeamA,
-    this.scoreTeamB,
+    this.scoreTeamA = 0,
+    this.scoreTeamB = 0,
     this.minute,
+    this.venue = 'La caneca',
+    this.isFavorite = false, // Valor predeterminado false
+    required this.oddsA,
+    required this.oddsB,
   });
 
   factory MatchModel.fromJson(Map<String, dynamic> json) {
+    // Lista de venues por defecto
+    final defaultVenues = [
+      "La caneca",
+      "La Javeriana Polideportivo",
+      "Estadio Metropolitano",
+      "El Coliseo",
+      "Arena Central"
+    ];
+    String venue;
+    if (json.containsKey('venue') &&
+        json['venue'] != null &&
+        json['venue'].toString().isNotEmpty) {
+      venue = json['venue'];
+    } else {
+      venue = defaultVenues[Random().nextInt(defaultVenues.length)];
+    }
+
     
+
     return MatchModel(
       eventId: json['eventId'] ?? '',
       acidEventId: json['acidEventId'] ?? '',
       name: json['name'] ?? '',
       sport: json['sport'] ?? '',
-      // Parseamos la ubicación usando LocationModel
       location: json['location'] != null
           ? LocationModel.fromJson(json['location'])
           : LocationModel(lat: 0, lng: 0),
       startTime: DateTime.parse(json['startTime']),
       status: json['status'] ?? '',
       providerId: json['providerId'] ?? '',
-      // Según tu JSON de ejemplo, los nombres de los equipos vienen en "team1" y "team2"
       homeTeam: json['homeTeam'] ?? '',
       awayTeam: json['awayTeam'] ?? '',
-      // Los demás campos se mantienen con sus valores por defecto o asignados
-      // Si en el futuro el API envía otros datos, podrías ajustarlos
+      scoreTeamA: json["home_score"] ?? 0,
+      scoreTeamB: json["away_score"] ?? 0,
+      venue: venue,
+      // Se lee isFavorite si viene, sino se asigna false
+      isFavorite: json.containsKey('isFavorite') ? json['isFavorite'] as bool : false,
+      logoTeamA: json.containsKey("home_logo") ? json["home_logo"] : "assets/images/team_alpha.png",
+      logoTeamB: json.containsKey("away_logo") ? json["away_logo"] : "assets/images/team_beta.png",
+      oddsA: json['oddsA'] != null ? (json['oddsA'] as num).toDouble() : 1.0,
+      oddsB: json['oddsB'] != null ? (json['oddsB'] as num).toDouble() : 1.0,
     );
   }
 
-
+  Map<String, dynamic> toJson() {
+    return {
+      'eventId': eventId,
+      'acidEventId': acidEventId,
+      'name': name,
+      'sport': sport,
+      'location': location.toJson(), // Si en backend se espera un objeto anidado, se deja así
+      'startTime': startTime.toIso8601String(),
+      'status': status,
+      'providerId': providerId,
+      'homeTeam': homeTeam,
+      'awayTeam': awayTeam,
+      'tournament': tournament,
+      'logoTeamA': logoTeamA,
+      'logoTeamB': logoTeamB,
+      'home_score': scoreTeamA,
+      'away_score': scoreTeamB,
+      'minute': minute,
+      'dateTime': dateTime.toIso8601String(),
+      'venue': venue,
+      'isFavorite': isFavorite, // Se incluye en el map para persistirlo localmente si se desea
+      'oddsA': oddsA,
+      'oddsB': oddsB,
+    };
+  }
 }
