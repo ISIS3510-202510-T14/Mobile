@@ -1,10 +1,13 @@
 import 'package:campus_picks/data/repositories/auth_repository.dart';
 import 'package:campus_picks/data/services/auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:provider/provider.dart';
 
 import '../viewmodels/user_viewmodel.dart';
 import '../../data/services/backend_api.dart';
+import '../../data/services/user_metrics_service.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   final String username;
@@ -28,6 +31,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final TextEditingController phoneNumberController = TextEditingController();
   int? selectedAge;
   String selectedGender = 'Male';
+  bool _completed = false;
 
   void _submitForm() async {
     if (fullNameController.text.isEmpty ||
@@ -74,12 +78,21 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         SnackBar(content: Text('User created successfully: $userId')),
       );
 
+      _completed = true;
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    if (!_completed) {
+      unawaited(UserMetricsService.incrementIncompleteRegistration());
+    }
+    super.dispose();
   }
 
   @override

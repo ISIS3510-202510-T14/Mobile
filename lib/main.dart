@@ -18,6 +18,7 @@ import 'package:campus_picks/data/services/isolate_manager.dart';
 import 'package:campus_picks/data/services/connectivity_service.dart';
 import 'package:campus_picks/data/services/draft_sync_service.dart';
 import 'package:campus_picks/data/services/upload_service.dart';  // ← added
+import 'package:campus_picks/data/services/user_metrics_service.dart';
 
 import 'package:campus_picks/data/models/match_model.dart';
 
@@ -142,6 +143,7 @@ Future<void> main() async {
 
   // Temporary
   await UploadService.uploadErrorLogs();
+  await UserMetricsService.sendPendingMetrics();
 }
 
 /// Routes background tasks to your upload service
@@ -150,6 +152,7 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task == 'uploadErrorLogs') {
       await UploadService.uploadErrorLogs();
+      await UserMetricsService.sendPendingMetrics();
     }
     return Future.value(true);
   });
