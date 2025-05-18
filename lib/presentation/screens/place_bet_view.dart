@@ -52,7 +52,7 @@ class BetScreen extends StatefulWidget {
 class _BetScreenState extends State<BetScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _amountController = TextEditingController(
-    text: NumberFormat.currency(locale: 'en_US', symbol: '\\$', decimalDigits: 2)
+    text: NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2)
         .format(0),
   );
   String? selectedTeam;
