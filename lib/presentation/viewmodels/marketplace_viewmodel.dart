@@ -51,8 +51,18 @@ class MarketplaceViewModel extends ChangeNotifier {
           statusCode = response.statusCode;
 
           if (response.statusCode == 200) {
-            final List<dynamic> jsonList = json.decode(response.body) as List<dynamic>;
-            products = await compute(_parseProducts, jsonList);
+            // final List<dynamic> jsonList = json.decode(response.body) as List<dynamic>;
+            // products = await compute(_parseProducts, jsonList);
+            // Decode the top-level object, then extract the "products" list
+            final decoded = json.decode(response.body);
+            if (decoded is Map<String, dynamic> && decoded['products'] is List) {
+              final List<dynamic> jsonList = decoded['products'] as List<dynamic>;
+              products = await compute(_parseProducts, jsonList);
+            } else {
+              throw FormatException(
+                'Expected JSON with a top-level "products" array'
+              );
+            }
             success = true;
             _error = null;
 
