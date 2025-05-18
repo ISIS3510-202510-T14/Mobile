@@ -1,4 +1,4 @@
-// lib/widgets/live_match_card.dart
+// lib/presentation/widgets/live_match_card.dart
 import 'package:campus_picks/data/services/connectivity_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -21,28 +21,26 @@ class LiveMatchCard extends BaseMatchCard {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    // Styles for small labels (less contrast)
-    final labelStyle = theme.textTheme.bodySmall?.copyWith(
-      color: colors.onSurface.withOpacity(0.6),
-      fontSize: theme.textTheme.bodySmall!.fontSize! * 0.9,
-    );
-
-    final scoreA = match.scoreTeamA ?? 0;
-    final scoreB = match.scoreTeamB ?? 0;
-    final minute = match.minute ?? 0;
+    final smallLabel =
+        theme.textTheme.bodySmall?.copyWith(color: colors.onSurface.withOpacity(0.6));
 
     final date = match.startTime;
-    final dateString = "${date.day}/${date.month}/${date.year}";
+    final dateString = '${date.day}/${date.month}/${date.year}';
     final timeString =
-        "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
-    Widget liveIndicator = Row(
+    final scoreA = match.scoreTeamA;
+    final scoreB = match.scoreTeamB;
+    final hasScore = scoreA != null && scoreB != null;
+
+    final liveIndicator = Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.circle, color: Colors.red, size: 10),
         const SizedBox(width: 4),
         Text(
-          "LIVE",
+          'LIVE',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: Colors.red,
             fontWeight: FontWeight.bold,
@@ -54,7 +52,6 @@ class LiveMatchCard extends BaseMatchCard {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Favorite star centered above card
         Positioned(
           top: -12,
           left: 0,
@@ -63,114 +60,105 @@ class LiveMatchCard extends BaseMatchCard {
             alignment: Alignment.topCenter,
             child: FavoriteButton(
               initialFavorite: match.isFavorite,
-              onFavoriteChanged: (isFav) {
+              onFavoriteChanged: (fav) {
                 Provider.of<MatchesViewModel>(context, listen: false)
-                    .toggleFavorite(match.eventId, isFav, match);
+                    .toggleFavorite(match.eventId, fav, match);
               },
             ),
           ),
         ),
-
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              liveIndicator,
-              const SizedBox(height: 8),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final totalWidth = constraints.maxWidth;
+              const centerWidth = 40.0;
+              final sideWidth = (totalWidth - centerWidth) / 2;
 
-              // Teams + minute row, evenly split with center fixed width
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final totalWidth = constraints.maxWidth;
-                  const centerWidth = 40.0;
-                  final sideWidth = (totalWidth - centerWidth) / 2;
-                  return Row(
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  liveIndicator,
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SizedBox(
                         width: sideWidth,
-                        child: _buildTeamColumn(
-                          match.logoTeamA,
-                          scoreA.toString(),
-                          match.homeTeam,
-                          theme,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: _teamIconColumn(
+                            context,
+                            match.logoTeamA,
+                            match.homeTeam,
+                          ),
                         ),
                       ),
                       SizedBox(
                         width: centerWidth,
                         child: Center(
                           child: Text(
-                            '$minute’',
+                            hasScore ? '${scoreA ?? ''} - ${scoreB ?? ''}' : 'VS',
                             style: theme.textTheme.bodySmall
-                                ?.copyWith(color: colors.onSurface.withOpacity(0.6)),
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
                       SizedBox(
                         width: sideWidth,
-                        child: _buildTeamColumn(
-                          match.logoTeamB,
-                          scoreB.toString(),
-                          match.awayTeam,
-                          theme,
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: _teamIconColumn(
+                            context,
+                            match.logoTeamB,
+                            match.awayTeam,
+                          ),
                         ),
                       ),
                     ],
-                  );
-                },
-              ),
-
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(dateString, style: labelStyle),
-                  const SizedBox(width: 8),
-                  Text(timeString, style: labelStyle),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        User? user = FirebaseAuth.instance.currentUser;
+                        if (user != null) {
+                          final connectivity = context.read<ConnectivityNotifier>();
+                          final vm = BetViewModel(
+                            match: match,
+                            userId: user.uid,
+                            connectivity: connectivity,
+                          );
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => BetScreen(viewModel: vm)),
+                          );
+                        }
+                      },
+                      child: const Text('Bet Now'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('$dateString  •  $timeString', style: smallLabel),
+                  Text(match.venue, style: smallLabel),
                 ],
-              ),
-              const SizedBox(height: 4),
-              Text(match.venue, style: labelStyle),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () {
-                  User? user = FirebaseAuth.instance.currentUser;
-                  if (user != null) {
-                    // inject connectivity from Provider
-                    final connectivity = context.read<ConnectivityNotifier>();
-                    final vm = BetViewModel(
-                    match: match,
-                    userId: user.uid,
-                    connectivity: connectivity,
-                    );
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BetScreen(viewModel: vm),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Bet Now'),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTeamColumn(
-    String logoUrl,
-    String score,
-    String team,
-    ThemeData theme,
-  ) {
+  Widget _teamIconColumn(
+      BuildContext context, String imageUrl, String teamName) {
+    final theme = Theme.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         CachedNetworkImage(
-          imageUrl: logoUrl,
+          imageUrl: imageUrl,
           width: 32,
           height: 32,
           placeholder: (_, __) =>
@@ -178,15 +166,15 @@ class LiveMatchCard extends BaseMatchCard {
           errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported, size: 32),
         ),
         const SizedBox(height: 4),
-        Text(
-          score,
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          team,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            teamName,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium,
+          ),
         ),
       ],
     );
