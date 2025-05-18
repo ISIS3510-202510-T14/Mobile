@@ -2,6 +2,7 @@ import 'package:campus_picks/presentation/screens/user_bets_screen.dart';
 import 'package:flutter/material.dart';
 import 'matches_view.dart';
 import "recommended_bet_screen.dart"; // Asegúrate de importar tu pantalla de RecommendedBets
+import 'marketplace_screen.dart';
 
 class HomeNav extends StatefulWidget {
   const HomeNav({Key? key}) : super(key: key);
@@ -19,8 +20,8 @@ class _HomeNavState extends State<HomeNav> {
     const MatchesView(), // Índice 0: Matches
     const RecommendedBetsScreen(), // Índice 1: Recommended Bets
     const UserBetsScreen(),
-    const Placeholder(), // Índice 2: Marketplace (Coming soon)
-    const Placeholder(), // Índice 3: Profile (Coming soon)
+    const MarketplaceScreen(), // Índice 3: Marketplace
+    const Placeholder(), // Índice 4: Profile (Coming soon)
   ];
 
   @override
@@ -32,8 +33,8 @@ class _HomeNavState extends State<HomeNav> {
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
         onTap: (int index) {
-          // We can nagivate to the first three screens, but the last two are placeholders.
-          if (index <= 2) {
+          // We can nagivate to the first four screens, but the last is placeholder.
+          if (index <= 3) {
             setState(() {
               _currentIndex = index;
             });

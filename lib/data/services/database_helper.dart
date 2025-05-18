@@ -16,6 +16,7 @@ import 'package:path/path.dart';
 import '../models/match_model.dart';
 import '../models/bet_model.dart';
 import '../models/recommended_bet_model.dart';
+import '../models/product_model.dart';
 
 class DatabaseHelper {
   // ------------------------ singleton boilerplate ------------------------
@@ -38,7 +39,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,                                 
+      version: 6,
       onCreate: _createDB,
       onUpgrade: (db, oldV, newV) async {
         if (oldV < 2) {
@@ -69,6 +70,19 @@ class DatabaseHelper {
               endpoint    TEXT    NOT NULL,
               error_type  TEXT    NOT NULL,
               timestamp   TEXT    NOT NULL
+            );
+          ''');
+        }
+        if (oldV < 6) {
+          // v6 – add products table
+          await db.execute('''
+            CREATE TABLE products (
+              id          TEXT PRIMARY KEY,
+              name        TEXT,
+              description TEXT,
+              price       REAL,
+              imageUrl    TEXT,
+              category    TEXT
             );
           ''');
         }
@@ -148,6 +162,19 @@ class DatabaseHelper {
       );
     ''';
     await db.execute(favoriteTable);
+
+    // PRODUCTS ----------------------------------------
+    const productsTable = '''
+      CREATE TABLE products (
+        id          TEXT PRIMARY KEY,
+        name        TEXT,
+        description TEXT,
+        price       REAL,
+        imageUrl    TEXT,
+        category    TEXT
+      );
+    ''';
+    await db.execute(productsTable);
 
     // define this at the top of your DatabaseHelper class
     const errorLogsTable = '''
@@ -471,6 +498,55 @@ Future<void> _pruneOldRecommendedBets() async {
     return await db.delete(
       'recommended_bets',
       where: 'recommendationId = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // ************************************************************
+  //   PRODUCTS
+  // ************************************************************
+
+  Future<int> insertProduct(Product product) async {
+    final db = await database;
+    return await db.insert(
+      'products',
+      product.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Product?> getProduct(String id) async {
+    final db = await database;
+    final res = await db.query(
+      'products',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (res.isNotEmpty) return Product.fromJson(res.first);
+    return null;
+  }
+
+  Future<List<Product>> getAllProducts() async {
+    final db = await database;
+    final res = await db.query('products');
+    return res.map((j) => Product.fromJson(j)).toList();
+  }
+
+  Future<int> updateProduct(Product product) async {
+    final db = await database;
+    return await db.update(
+      'products',
+      product.toJson(),
+      where: 'id = ?',
+      whereArgs: [product.id],
+    );
+  }
+
+  Future<int> deleteProduct(String id) async {
+    final db = await database;
+    return await db.delete(
+      'products',
+      where: 'id = ?',
       whereArgs: [id],
     );
   }
