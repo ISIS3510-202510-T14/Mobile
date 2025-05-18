@@ -1,6 +1,8 @@
 // lib/presentation/screens/place_bet_view.dart
 // UPDATED – adds confirmation dialog, offline draft flag, and unconditional pop
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../viewmodels/bet_viewmodel.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../viewmodels/user_bets_view_model.dart';
+import '../../data/services/user_metrics_service.dart';
 
 /// Formats numeric input as US currency with commas and two decimals
 class CurrencyInputFormatter extends TextInputFormatter {
@@ -49,11 +52,12 @@ class BetScreen extends StatefulWidget {
 class _BetScreenState extends State<BetScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _amountController = TextEditingController(
-    text: NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 2)
+    text: NumberFormat.currency(locale: 'en_US', symbol: '\\$', decimalDigits: 2)
         .format(0),
   );
   String? selectedTeam;
   late ConnectivityNotifier connectivity;
+  bool _betPlaced = false;
 
   @override
   void initState() {
@@ -64,6 +68,9 @@ class _BetScreenState extends State<BetScreen> {
   @override
   void dispose() {
     widget.viewModel.removeListener(_onVmMessage);
+    if (!_betPlaced) {
+      unawaited(UserMetricsService.incrementIncompleteBet());
+    }
     super.dispose();
   }
 
@@ -209,6 +216,7 @@ class _BetScreenState extends State<BetScreen> {
                               }
 
                               // Always pop back after we queued the bet
+                              _betPlaced = true;
                               if (mounted) Navigator.pop(context);
                             },
                       child: const Text('Submit'),
