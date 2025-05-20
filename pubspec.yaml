@@ -30,6 +30,8 @@ dependencies:
       path: workmanager
       ref: main
 
+  smooth_page_indicator: ^1.1.0
+
 
 dev_dependencies:
   flutter_test:
