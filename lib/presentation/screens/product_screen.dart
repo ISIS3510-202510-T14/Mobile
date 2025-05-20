@@ -200,57 +200,59 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                         // PRICE + ADD TO CART
                         // ─────────────  PRICE  +  VIEWS  +  ADD TO CART  ─────────────
-Row(
-  children: [
-    // Precio
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Price',
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '\$${product.price.toStringAsFixed(2)}',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: primary,
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-      ],
-    ),
+                Row(
+                  children: [
+                    // Precio
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Price',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
 
-    // Chip de vistas
-    const Spacer(),
-    Chip(
-      avatar: const Icon(Icons.visibility, size: 18),
-      label: Text('${context.watch<ProductDetailViewModel>().viewCount}'),
-      backgroundColor: primary.withOpacity(.15),
-      shape: const StadiumBorder(),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    ),
-    const SizedBox(width: 12),
+                    // Chip de vistas
+                    const Spacer(),
+                    Chip(
+                      avatar: const Icon(Icons.visibility, size: 18),
+                      label: Text('${context.watch<ProductDetailViewModel>().viewCount}'),
+                      backgroundColor: primary.withOpacity(.15),
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const SizedBox(width: 12),
 
-    // Botón (sin lógica aún)
-    ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        elevation: 4,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-        backgroundColor: Colors.black,
-      ),
-      onPressed: () {},          // lo implementará tu compañero
-      child: const Text(
-        'ADD TO CART',
-        style: TextStyle(color: Colors.white, letterSpacing: 0.5),
-      ),
-    ),
-  ],
-),
+                    // Botón (sin lógica aún)
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        elevation: 4,
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        backgroundColor: Colors.black,
+                      ),
+                      onPressed: () {},          
+                      child: const Text(
+                        'ADD TO CART',
+                        style: TextStyle(color: Colors.white, letterSpacing: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+                        const SizedBox(height: 32),
+
                       ],
                     ),
                   );
