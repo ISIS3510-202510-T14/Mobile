@@ -1,9 +1,13 @@
+// lib/presentation/screens/marketplace_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/marketplace_viewmodel.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/models/product_model.dart';
+
+import '../viewmodels/product_detail_viewmodel.dart';
+import '../screens/product_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({Key? key}) : super(key: key);
@@ -20,9 +24,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
+      setState(() => _searchQuery = _searchController.text.toLowerCase());
     });
   }
 
@@ -99,7 +101,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         childAspectRatio: 0.6,
                       ),
                       itemCount: filtered.length,
-                      itemBuilder: (_, i) => _ProductCard(product: filtered[i]),
+                      itemBuilder: (_, i) {
+                        final prod = filtered[i];
+                        return _ProductCard(
+                          product: prod,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChangeNotifierProvider(
+                                  create: (ctx) => ProductDetailViewModel(
+                                    product: prod,
+                                    connectivity: Provider.of<ConnectivityNotifier>(ctx, listen: false),
+                                  ),
+                                  child: ProductDetailPage(product: prod),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   );
                 }),
@@ -131,8 +152,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 }
 
 class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product});
+  const _ProductCard({
+    required this.product,
+    required this.onTap,
+  });
+
   final Product product;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +173,7 @@ class _ProductCard extends StatelessWidget {
     final titleStyle = theme.textTheme.titleMedium?.copyWith(fontSize: fontSize);
 
     return GestureDetector(
-      onTap: () {},
+      onTap: onTap,
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

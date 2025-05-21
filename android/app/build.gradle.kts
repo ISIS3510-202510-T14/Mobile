@@ -67,8 +67,8 @@ android {
     }
     getByName("release") {
       signingConfig = signingConfigs.getByName("release")
-      isMinifyEnabled = true       // opcional: R8/ProGuard
-      isShrinkResources = true     // opcional: elimina recursos no usados
+      isMinifyEnabled = false       // opcional: R8/ProGuard
+      isShrinkResources = false     // opcional: elimina recursos no usados
       proguardFiles(
         getDefaultProguardFile("proguard-android.txt"),
         "proguard-rules.pro"

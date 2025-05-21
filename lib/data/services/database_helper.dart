@@ -39,7 +39,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _createDB,
       onUpgrade: (db, oldV, newV) async {
         if (oldV < 2) {
@@ -86,6 +86,21 @@ class DatabaseHelper {
             );
           ''');
         }
+
+        if (oldV < 7) {
+        await db.execute('''
+          CREATE TABLE product_views (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId    TEXT NOT NULL
+            productId TEXT    NOT NULL,
+            viewedAt  TEXT    NOT NULL,
+
+          );
+        ''');
+      }
+
+
+
       },
     );
   }
@@ -186,6 +201,21 @@ class DatabaseHelper {
       );
     ''';
     await db.execute(errorLogsTable);
+
+
+        // ...............................................................
+    // 2)  Initial schema  – add inside _createDB()
+    // ...............................................................
+    const productViewsTable = '''
+      CREATE TABLE product_views (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId     TEXT NOT NULL,
+        productId  TEXT    NOT NULL,
+        viewedAt   TEXT    NOT NULL
+      );
+    ''';
+    await db.execute(productViewsTable);
+    
   }
   
 
@@ -576,4 +606,86 @@ Future<void> _pruneOldRecommendedBets() async {
     // Sqflite.firstIntValue unwraps the single integer result
     return Sqflite.firstIntValue(result) ?? 0;
   }
+
+  
+
+// ────────────────────────────────────────────────────────────────
+//   PRODUCT_VIEWS
+// ────────────────────────────────────────────────────────────────
+
+ Future<int> insertProductView(String productId, String userId) async {
+  final db = await database;
+  return await db.insert(
+    'product_views',
+    {
+      'productId': productId,
+      'viewedAt' : DateTime.now().toIso8601String(),
+      'userId'   : userId,
+    },
+    conflictAlgorithm: ConflictAlgorithm.replace,
+  );
+}
+
+/// Total de vistas para un producto (todos los usuarios)
+Future<int> countProductViews(String productId) async {
+  final db = await database;
+  final res = await db.rawQuery(
+    'SELECT COUNT(*) AS c FROM product_views WHERE productId = ?',
+    [productId],
+  );
+  return Sqflite.firstIntValue(res) ?? 0;
+}
+
+/// Vistas de un producto hechas por un usuario específico
+Future<int> countProductViewsByUser(String productId, String userId) async {
+  final db = await database;
+  final res = await db.rawQuery(
+    'SELECT COUNT(*) AS c FROM product_views '
+    'WHERE productId = ? AND userId = ?',
+    [productId, userId],
+  );
+  return Sqflite.firstIntValue(res) ?? 0;
+}
+
+/// Borra todas las vistas registradas para un producto (cualquier usuario)
+Future<int> deleteProductViews(String productId) async {
+  final db = await database;
+  return await db.delete(
+    'product_views',
+    where: 'productId = ?',
+    whereArgs: [productId],
+  );
+}
+
+/// Borra por completo la tabla de vistas
+Future<void> clearProductViews() async {
+  final db = await database;
+  await db.delete('product_views');
+}
+
+Future<List<Map<String, dynamic>>> getPendingProductViews({int limit = 500}) async {
+  final db = await database;
+  return await db.query(
+    'product_views',
+    where: 'synced = ?',
+    whereArgs: [0],
+    orderBy: 'viewedAt DESC',
+    limit: limit,
+  );
+}
+
+Future<void> markProductViewsSynced(List<int> ids) async {
+  if (ids.isEmpty) return;
+  final db = await database;
+  final placeholders = List.filled(ids.length, '?').join(',');
+  await db.rawUpdate(
+    'UPDATE product_views SET synced = 1 WHERE id IN ($placeholders)',
+    ids,
+  );
+}
+
+
+
+
+
 }
