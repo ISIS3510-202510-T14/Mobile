@@ -3,6 +3,7 @@ import '../../data/models/product_model.dart';
 import '../../data/repositories/product_view_repository.dart';
 import '../../data/services/connectivity_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../data/services/productView_sync_service.dart';
 
 class ProductDetailViewModel extends ChangeNotifier {
   final Product product;
@@ -26,6 +27,7 @@ class ProductDetailViewModel extends ChangeNotifier {
 
   Future<void> _initialize() async {
     // 1) registra la vista
+    print("Product ID: ${product.id}");
 
     //uid de usuario firebase
     final uid = FirebaseAuth.instance.currentUser!.uid;  
@@ -33,6 +35,11 @@ class ProductDetailViewModel extends ChangeNotifier {
     // 2) consulta cuántas veces se ha visto
     _viewCount = await _viewsRepo.timesViewed(product.id);
     notifyListeners();
+
+
+     if (_conn.isOnline) {
+      await ProductViewSyncService.instance.syncNow();
+    }
   }
 
   void _onConnChanged() => notifyListeners();

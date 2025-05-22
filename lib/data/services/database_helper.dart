@@ -88,15 +88,15 @@ class DatabaseHelper {
         }
 
         if (oldV < 7) {
-        await db.execute('''
-          CREATE TABLE product_views (
-            id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            userId    TEXT NOT NULL
-            productId TEXT    NOT NULL,
-            viewedAt  TEXT    NOT NULL,
-
-          );
-        ''');
+          await db.execute('''
+        CREATE TABLE product_views (
+          id        INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId    TEXT NOT NULL,
+          productId TEXT NOT NULL,
+          viewedAt  TEXT NOT NULL,
+          synced    INTEGER DEFAULT 0
+        );
+      ''');
       }
 
 
@@ -211,7 +211,8 @@ class DatabaseHelper {
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         userId     TEXT NOT NULL,
         productId  TEXT    NOT NULL,
-        viewedAt   TEXT    NOT NULL
+        viewedAt   TEXT    NOT NULL,
+        synced     INTEGER DEFAULT 0
       );
     ''';
     await db.execute(productViewsTable);
@@ -665,10 +666,10 @@ Future<void> clearProductViews() async {
 
 Future<List<Map<String, dynamic>>> getPendingProductViews({int limit = 500}) async {
   final db = await database;
-  return await db.query(
+    return await db.query(
     'product_views',
-    where: 'synced = ?',
-    whereArgs: [0],
+    columns: ['id', 'productId', 'userId', 'viewedAt'],   // <-- explícito
+    where: 'synced = 0',
     orderBy: 'viewedAt DESC',
     limit: limit,
   );
@@ -680,7 +681,7 @@ Future<void> markProductViewsSynced(List<int> ids) async {
   final placeholders = List.filled(ids.length, '?').join(',');
   await db.rawUpdate(
     'UPDATE product_views SET synced = 1 WHERE id IN ($placeholders)',
-    ids,
+    ids.map((e) => e as Object).toList(),   // ← sqflite espera List<Object?>
   );
 }
 
