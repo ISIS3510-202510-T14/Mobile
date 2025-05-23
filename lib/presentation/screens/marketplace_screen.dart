@@ -8,6 +8,8 @@ import '../../data/models/product_model.dart';
 
 import '../viewmodels/product_detail_viewmodel.dart';
 import '../screens/product_screen.dart';
+import '../viewmodels/cart_viewmodel.dart';
+import '../screens/cart_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({Key? key}) : super(key: key);
@@ -46,26 +48,49 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Marketplace'),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(56),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search products...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant,
-                  contentPadding: EdgeInsets.zero,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
+          actions: [
+            // Example: Cart Icon with a Badge
+            Consumer<CartViewModel>( // Use the shared CartViewModel
+              builder: (context, cartVM, child) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.shopping_cart),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/cart');
+                      },
+                    ),
+                    if (cartVM.itemCount > 0) // Assuming itemCount in CartViewModel
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '${cartVM.itemCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-          ),
+          ],
+          // ... (rest of your AppBar)
         ),
         body: Consumer<ConnectivityNotifier>(builder: (context, conn, _) {
           return Stack(

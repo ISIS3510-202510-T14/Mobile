@@ -1,4 +1,3 @@
-// lib/presentation/product_detail/product_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,6 +5,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../../data/models/product_model.dart';
 import '../viewmodels/product_detail_viewmodel.dart';
+import '../viewmodels/cart_viewmodel.dart';
 
 class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({Key? key, required this.product}) : super(key: key);
@@ -17,11 +17,20 @@ class ProductDetailPage extends StatefulWidget {
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
   final _pageCtrl = PageController();
+  final TextEditingController _quantityController = TextEditingController(text: '1');
   bool _descExpanded = true;
+  int _quantity = 1;
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final scheme  = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     final primary = scheme.primary;
     final product = widget.product;
 
@@ -51,7 +60,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         errorWidget: (_, __, ___) => const Icon(Icons.error),
                       ),
                     ),
-                    // If you plan to support multiple images, add more here
                   ],
                 ),
               ),
@@ -85,8 +93,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                     if (offline)
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.red.shade700,
                           borderRadius: BorderRadius.circular(6),
@@ -110,8 +117,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
                     decoration: BoxDecoration(
                       color: scheme.surface,
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(28)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(.15),
@@ -122,7 +128,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     child: ListView(
                       controller: scrollCtrl,
                       children: [
-                        // drag handle
                         Align(
                           alignment: Alignment.topCenter,
                           child: Container(
@@ -136,7 +141,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // sku / small caption
                         if ((product.category).isNotEmpty)
                           Text(
                             product.category.toUpperCase(),
@@ -145,7 +149,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 .labelSmall
                                 ?.copyWith(letterSpacing: 1.2),
                           ),
-                        // name
                         const SizedBox(height: 6),
                         Text(
                           product.name,
@@ -160,7 +163,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                         const SizedBox(height: 24),
 
-                        // DESCRIPTION header
                         Row(
                           children: [
                             Text(
@@ -172,9 +174,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               icon: Icon(
-                                _descExpanded
-                                    ? Icons.remove
-                                    : Icons.add,
+                                _descExpanded ? Icons.remove : Icons.add,
                                 size: 20,
                               ),
                               onPressed: () =>
@@ -198,61 +198,117 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                         const SizedBox(height: 32),
 
-                        // PRICE + ADD TO CART
-                        // ─────────────  PRICE  +  VIEWS  +  ADD TO CART  ─────────────
-                Row(
-                  children: [
-                    // Precio
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Price',
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '\$${product.price.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: primary,
-                                fontWeight: FontWeight.bold,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Price', style: Theme.of(context).textTheme.labelSmall),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '\$${product.price.toStringAsFixed(2)}',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                          color: primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ],
                               ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text('Quantity', style: Theme.of(context).textTheme.labelSmall),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: scheme.outline),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.remove),
+                                          onPressed: () {
+                                            if (_quantity > 1) {
+                                              setState(() => _quantity--);
+                                              _quantityController.text = '$_quantity';
+                                            }
+                                          },
+                                        ),
+                                        Text('$_quantity'),
+                                        IconButton(
+                                          icon: const Icon(Icons.add),
+                                          onPressed: () {
+                                            setState(() => _quantity++);
+                                            _quantityController.text = '$_quantity';
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text('Views', style: Theme.of(context).textTheme.labelSmall),
+                                  const SizedBox(height: 4),
+                                  Chip(
+                                    avatar: const Icon(Icons.visibility, size: 18),
+                                    label: Text('${context.watch<ProductDetailViewModel>().viewCount}'),
+                                    backgroundColor: primary.withOpacity(.15),
+                                    shape: const StadiumBorder(),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
 
-                    // Chip de vistas
-                    const Spacer(),
-                    Chip(
-                      avatar: const Icon(Icons.visibility, size: 18),
-                      label: Text('${context.watch<ProductDetailViewModel>().viewCount}'),
-                      backgroundColor: primary.withOpacity(.15),
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Botón (sin lógica aún)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        elevation: 4,
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        backgroundColor: Colors.black,
-                      ),
-                      onPressed: () {},          
-                      child: const Text(
-                        'ADD TO CART',
-                        style: TextStyle(color: Colors.white, letterSpacing: 0.5),
-                      ),
-                    ),
-                  ],
-                ),
                         const SizedBox(height: 32),
 
+                        Consumer<CartViewModel>(
+                          builder: (_, cartVM, __) => SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                elevation: 4,
+                                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                backgroundColor: Colors.black,
+                              ),
+                              onPressed: () {
+                                for (int i = 0; i < _quantity; i++) {
+                                  cartVM.addToCart(product);
+                                }
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Product added to cart'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                'ADD TO CART',
+                                style: TextStyle(color: Colors.white, letterSpacing: 0.5),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
                       ],
                     ),
                   );
