@@ -89,13 +89,13 @@ class BetViewModel extends ChangeNotifier {
         } else {
           error = response.body;
           await _errorRepo.logError('/api/bets', 'BadStatus${response.statusCode}');
-          lastMessage = 'Failed to place bet: ${response.statusCode}';
+          lastMessage = 'Unable to place bet. Please try again later.';
         }
       } catch (e) {
         stopwatch.stop();
         error = e.toString();
         await _errorRepo.logError('/api/bets', e.runtimeType.toString());
-        lastMessage = 'Error placing bet: $e';
+        lastMessage = 'Unable to place bet. Please try again later.';
       } finally {
         await metrics_management.logApiMetric(
           endpoint: '/api/bets',
