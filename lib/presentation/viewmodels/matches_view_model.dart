@@ -561,8 +561,11 @@ Future<void> fetchMatchesWithFavorites({
       ? <String>[]
       : await _favoriteRepository.getFavoritesForUser(user.uid);
 
+  // Convert to Set for faster lookups when marking favorites
+  final favSet = favIds.toSet();
+
   for (var m in allMatches) {
-    m.isFavorite = favIds.contains(m.eventId);
+    m.isFavorite = favSet.contains(m.eventId);
   }
 
   //final favoriteMatches = await _favoriteRepository.getFavoriteMatches(user!.uid);
