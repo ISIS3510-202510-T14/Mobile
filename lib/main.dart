@@ -28,6 +28,8 @@ import 'package:campus_picks/presentation/viewmodels/user_viewmodel.dart';
 import 'package:campus_picks/presentation/viewmodels/auth_wrapper_viewmodel.dart';
 import 'package:campus_picks/presentation/viewmodels/bet_viewmodel.dart';
 import 'package:campus_picks/presentation/viewmodels/user_bets_view_model.dart';
+import 'package:campus_picks/presentation/viewmodels/cart_viewmodel.dart';
+import 'package:campus_picks/presentation/screens/cart_screen.dart';
 
 import 'theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -125,6 +127,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => UserViewModel(), lazy: false),
         ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
+        ChangeNotifierProvider(create: (_) => CartViewModel()),
         ChangeNotifierProvider(
           lazy: false,
           create: (ctx) => DraftSyncService(
@@ -168,6 +171,9 @@ class MyApp extends StatelessWidget {
       title: 'Demo Matches',
       theme: AppTheme.darkTheme,
       home: const AuthWrapper(),
+      routes: {
+        '/cart': (context) => const CartPage(),
+      }
     );
   }
 }
