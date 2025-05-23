@@ -198,15 +198,23 @@ class _MatchesViewState extends State<MatchesView>
                     ),
                   ),
 
-                  // ---------- tabs ----------
-                  TabBar(
+                  // // ---------- tabs ----------
+                  // TabBar(
+                  //   controller: _tabController,
+                  //   tabs: const [
+                  //     Tab(text: 'Live'),
+                  //     Tab(text: 'Upcoming'),
+                  //     Tab(text: 'Finished'),
+                  //   ],
+                  // ),
+                   TabBar(
                     controller: _tabController,
                     tabs: const [
                       Tab(text: 'Live'),
                       Tab(text: 'Upcoming'),
                       Tab(text: 'Finished'),
                     ],
-                  ),
+                  )
                 ],
               ),
             ),
@@ -235,15 +243,33 @@ class LiveMatchesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    //-- Before micro-optimizations-- 
+    // return ListView.builder(
+    //   itemCount: liveMatches.length,
+    //   itemBuilder: (context, index) {
+    //     final match = liveMatches[index];
+    //     return MatchCardFactory.createMatchCard(match);
+    //   },
+    // );
+
+
+  return ListView.builder(
       itemCount: liveMatches.length,
+      itemExtent: 250,   // altura fija aproximada de la tarjeta
+      cacheExtent: 600,  // precarga 5 ítems fuera de pantalla
       itemBuilder: (context, index) {
         final match = liveMatches[index];
         return MatchCardFactory.createMatchCard(match);
       },
     );
-  }
 }
+}
+
+
+
+
+
+
 
 // Pestaña de partidos próximos
 class UpcomingMatchesTab extends StatelessWidget {
@@ -253,13 +279,28 @@ class UpcomingMatchesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    //-- Before micro-optimizations--
+    // return ListView.builder(
+    //   itemCount: upcomingMatches.length,
+    //   itemBuilder: (context, index) {
+    //     final match = upcomingMatches[index];
+    //     return MatchCardFactory.createMatchCard(match);
+    //   },
+    // );
+
+
+    // Before micro-optimizations
     return ListView.builder(
       itemCount: upcomingMatches.length,
+      itemExtent: 250,   // altura fija aproximada de la tarjeta
+      cacheExtent: 600,  // precarga 5 ítems fuera de pantalla
       itemBuilder: (context, index) {
         final match = upcomingMatches[index];
         return MatchCardFactory.createMatchCard(match);
       },
     );
+
+
   }
 }
 
@@ -271,12 +312,23 @@ class FinishedMatchesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: finishedMatches.length,
-      itemBuilder: (context, index) {
-        final match = finishedMatches[index];
-        return MatchCardFactory.createMatchCard(match);
-      },
-    );
+    // return ListView.builder(
+    //   itemCount: finishedMatches.length,
+    //   itemBuilder: (context, index) {
+    //     final match = finishedMatches[index];
+    //     return MatchCardFactory.createMatchCard(match);
+    //   },
+    // );
+
+      return ListView.builder(
+          itemCount: finishedMatches.length,
+        itemExtent: 200,   // altura fija aproximada de la tarjeta
+        cacheExtent: 600,  // precarga 5 ítems fuera de pantalla
+          itemBuilder: (ctx, i) =>
+              MatchCardFactory.createMatchCard(finishedMatches[i]),
+      );
+
+  
+
   }
 }
