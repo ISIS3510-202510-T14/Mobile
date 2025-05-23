@@ -63,9 +63,9 @@ class RecommendedBetsViewModel extends ChangeNotifier {
           success = true;
 
           if (recommendedBets.isNotEmpty) {
-            for (var bet in recommendedBets) {
-              await _recommendedBetRepository.insertRecommendedBet(bet);
-            }
+            // Use batch insert to avoid repeated database writes
+            await _recommendedBetRepository
+                .insertRecommendedBetsBatch(recommendedBets);
           }
         } else {
           await _errorRepo.logError(

@@ -23,4 +23,10 @@ class RecommendedBetRepository {
   Future<int> deleteRecommendedBet(String recommendationId) async {
     return await _dbHelper.deleteRecommendedBet(recommendationId);
   }
+
+  /// Inserts a list of recommended bets using a batch operation
+  /// to reduce database round trips.
+  Future<void> insertRecommendedBetsBatch(List<RecommendedBet> bets) async {
+    await _dbHelper.insertRecommendedBetsBatch(bets);
+  }
 }
