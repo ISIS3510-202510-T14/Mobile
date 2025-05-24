@@ -11,9 +11,14 @@ import '../../data/models/recommended_bet_model.dart';
 import '../viewmodels/recommended_bet_viewmodel.dart';
 import '../../data/services/connectivity_service.dart';
 
-class RecommendedBetsScreen extends StatelessWidget {
+class RecommendedBetsScreen extends StatefulWidget {
   const RecommendedBetsScreen({Key? key}) : super(key: key);
 
+  @override
+  State<RecommendedBetsScreen> createState() => _RecommendedBetsScreenState();
+}
+
+class _RecommendedBetsScreenState extends State<RecommendedBetsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -80,8 +85,6 @@ class RecommendedBetsScreen extends StatelessWidget {
       ),
     );
   }
-
-
 }
 
 //──────────────────────────────────────────────────────── card ────
@@ -130,13 +133,19 @@ class _BetCard extends StatelessWidget {
           child: Row(children: [
             Icon(Icons.calendar_today, size: 14, color: theme.colorScheme.onSurface.withOpacity(.6)),
             const SizedBox(width: 4),
-            Text(dateFormat.format(bet.createdAt), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(.6))),
+            Text(
+              dateFormat.format(bet.createdAt),
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(.6)),
+            ),
           ]),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(color: iconColor.withOpacity(.15), borderRadius: BorderRadius.circular(8)),
-          child: Text(bet.betType.toUpperCase(), style: theme.textTheme.bodySmall?.copyWith(color: iconColor, fontWeight: FontWeight.w600)),
+          child: Text(
+            bet.betType.toUpperCase(),
+            style: theme.textTheme.bodySmall?.copyWith(color: iconColor, fontWeight: FontWeight.w600),
+          ),
         ),
         onTap: () => _showDetailModal(context),
       ),
@@ -167,15 +176,15 @@ class _BetDetailSheet extends StatelessWidget {
     late final Color color;
     switch (bet.betType.toLowerCase()) {
       case 'win':
-        icon  = Icons.thumb_up_alt_rounded;
+        icon = Icons.thumb_up_alt_rounded;
         color = theme.colorScheme.primary; // flat purple
         break;
       case 'caution':
-        icon  = Icons.warning_amber_rounded;
+        icon = Icons.warning_amber_rounded;
         color = theme.colorScheme.error;
         break;
       default:
-        icon  = Icons.info_rounded;
+        icon = Icons.info_rounded;
         color = theme.colorScheme.tertiary;
     }
 
@@ -195,36 +204,64 @@ class _BetDetailSheet extends StatelessWidget {
             child: SingleChildScrollView(
               controller: controller,
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Center(child: Container(width: 48, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: theme.colorScheme.onSurface.withOpacity(.3), borderRadius: BorderRadius.circular(2)))),
-                Row(children: [
-                  Icon(icon, color: color, size: 48), // flat icon – no circle
-                  const SizedBox(width: 16),
-                  Expanded(child: Text(bet.betType.toUpperCase(), style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700))),
-                ]),
-                const SizedBox(height: 24),
-                Text(bet.description, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
-                const SizedBox(height: 32),
-                Row(children: [
-                  Icon(Icons.event, size: 20, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Text(dateFmt.format(bet.createdAt), style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                ]),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurface.withOpacity(.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    child: const Text('Got it', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
-                ),
-              ]),
+                  Row(
+                    children: [
+                      Icon(icon, color: color, size: 48), // flat icon – no circle
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          bet.betType.toUpperCase(),
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    bet.description,
+                    style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Icon(Icons.event, size: 20, color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 8),
+                      Text(
+                        dateFmt.format(bet.createdAt),
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Got it', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
