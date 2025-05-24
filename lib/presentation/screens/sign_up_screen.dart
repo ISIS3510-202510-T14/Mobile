@@ -49,12 +49,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showErrorDialog('All fields are required!');
       return;
     }
+    if (username.length > 20) {
+      _showErrorDialog('User name cannot exceed 20 characters');
+      return;
+    }
     if (password != confirm) {
       _showErrorDialog('Passwords do not match!');
       return;
     }
     if (password.length < 6) { // optional UX guard (Firebase will also enforce)
       _showErrorDialog('Password must be at least 6 characters');
+      return;
+    }
+    if (password.length > 50) {
+      _showErrorDialog('Password cannot exceed 50 characters');
       return;
     }
 
@@ -94,10 +102,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     IconData icon,
     String hintText, {
     bool isPassword = false,
+    int? maxLength,
+    TextInputType? keyboardType,
   }) {
     return TextField(
       controller: controller,
       obscureText: isPassword && !isPasswordVisible,
+      keyboardType: keyboardType,
+      maxLength: maxLength,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.white),
@@ -114,6 +126,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
         fillColor: Colors.grey[900],
+        counterText: '',
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
@@ -134,13 +147,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
             Image.asset('assets/images/logo_symbol.png', height: 100),
             const SizedBox(height: 20),
 
-            _buildTextField(usernameController, Icons.person, 'User name'),
+            _buildTextField(
+              usernameController,
+              Icons.person,
+              'User name',
+              maxLength: 20,
+            ),
             const SizedBox(height: 10),
-            _buildTextField(emailController, Icons.email, 'Email'),
+            _buildTextField(emailController, Icons.email, 'Email', maxLength: 50,),
             const SizedBox(height: 10),
-            _buildTextField(passwordController, Icons.lock, 'Password', isPassword: true),
+            _buildTextField(
+              passwordController,
+              Icons.lock,
+              'Password',
+              isPassword: true,
+              maxLength: 50,
+            ),
             const SizedBox(height: 10),
-            _buildTextField(confirmPasswordController, Icons.lock, 'Confirm password', isPassword: true),
+            _buildTextField(
+              confirmPasswordController,
+              Icons.lock,
+              'Confirm password',
+              isPassword: true,
+              maxLength: 50,
+            ),
             const SizedBox(height: 20),
 
             ElevatedButton(

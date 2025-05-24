@@ -1,6 +1,7 @@
 import 'package:campus_picks/data/repositories/auth_repository.dart';
 import 'package:campus_picks/data/services/auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 
 import 'package:provider/provider.dart';
@@ -112,18 +113,19 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            GestureDetector(
-              onTap: () {},
-              child: CircleAvatar(
-                radius: 40,
-                backgroundColor: Colors.purple,
-                child: const Icon(Icons.camera_alt, color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 20),
-            _buildTextField(fullNameController, "Full name", Icons.person),
             _buildTextField(
-                phoneNumberController, "Phone number", Icons.phone),
+              fullNameController,
+              "Full name",
+              Icons.person,
+              maxLength: 20,
+            ),
+            _buildTextField(
+              phoneNumberController,
+              "Phone number",
+              Icons.phone,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
+            ),
             _buildDropdownAge(),
             _buildDropdownGender(),
             const SizedBox(height: 20),
@@ -145,11 +147,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   Widget _buildTextField(
-      TextEditingController controller, String hint, IconData icon) {
+      TextEditingController controller, String hint, IconData icon,
+      {int? maxLength, TextInputType? keyboardType}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: TextField(
         controller: controller,
+        keyboardType: keyboardType,
+        maxLength: maxLength,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           filled: true,
@@ -157,6 +162,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.white70),
           prefixIcon: Icon(icon, color: Colors.white70),
+          counterText: '',
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
