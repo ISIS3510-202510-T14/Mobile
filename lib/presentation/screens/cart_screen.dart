@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../viewmodels/cart_viewmodel.dart';
 
 class CartPage extends StatelessWidget {
@@ -111,21 +112,30 @@ class CartPage extends StatelessWidget {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
+                          backgroundColor: vm.isOffline ? Colors.grey : Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        onPressed: () {
-                          // mock checkout
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Thank you for your purchase!')),
-                          );
-                          context.read<CartViewModel>().clearCart();
-                          Navigator.pop(context);
-                        },
-                        child: const Text(
+                        onPressed: vm.isOffline
+                            ? () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Cannot proceed to checkout. No internet connection.'),
+                                  ),
+                                );
+                              }
+                            : () {
+                                vm.create();
+                                // mock checkout
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Thank you for your purchase!')),
+                                );
+                                context.read<CartViewModel>().clearCart();
+                                Navigator.pop(context);
+                              },
+                        child: Text(
                           'BUY NOW',
                           style: TextStyle(color: Colors.white, letterSpacing: 1),
                         ),
