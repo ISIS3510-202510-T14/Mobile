@@ -127,7 +127,9 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => UserViewModel(), lazy: false),
         ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
-        ChangeNotifierProvider(create: (_) => CartViewModel()),
+        ChangeNotifierProvider(create: (ctx) => CartViewModel(
+          connectivity: ctx.read<ConnectivityNotifier>(),
+        )),
         ChangeNotifierProvider(
           lazy: false,
           create: (ctx) => DraftSyncService(
