@@ -29,6 +29,49 @@ class MatchesViewModel extends ChangeNotifier {
   final MatchRepository _matchRepository = MatchRepository();
   final ConnectivityNotifier connectivityNotifier;
 
+  static const AndroidNotificationDetails _basicAndroid =
+      AndroidNotificationDetails(
+        'basic_channel_id',
+        'Basic Notifications',
+        channelDescription: 'Notifications for nearby events',
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+
+  static const AndroidNotificationDetails _liveAndroid =
+      AndroidNotificationDetails(
+        'live_channel',
+        'Live Events',
+        channelDescription: 'Notifications for live events near you',
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+
+  static const AndroidNotificationDetails _liveBetAndroid =
+      AndroidNotificationDetails(
+        'live_channel',
+        'Live Events',
+        channelDescription: 'Notifications for live events near you',
+        importance: Importance.max,
+        priority: Priority.high,
+        actions: [
+          AndroidNotificationAction(
+            'bet_now_action',
+            'Bet Now',
+            showsUserInterface: true,
+          ),
+        ],
+      );
+
+
+
+  static const NotificationDetails _basicDetails   =
+      NotificationDetails(android: _basicAndroid);
+  static const NotificationDetails _liveDetails    =
+      NotificationDetails(android: _liveAndroid);
+  static const NotificationDetails _liveBetDetails =
+      NotificationDetails(android: _liveBetAndroid);
+
   MatchesViewModel({required this.connectivityNotifier});
   
   // Métodos que usan connectivityNotifier...
@@ -37,7 +80,7 @@ class MatchesViewModel extends ChangeNotifier {
   /// Fetches events from the API endpoint using a GET request.
   /// Optional query parameters: [sport] and [startDate].
   Future<void> fetchMatches({String? sport, DateTime? startDate}) async {
-  print('[fetchMatches] Iniciando método...');
+  debugPrint('[fetchMatches] Iniciando método...');
 
   final endpoint = '/api/events';
   final queryParameters = {
@@ -53,7 +96,7 @@ class MatchesViewModel extends ChangeNotifier {
     final uri = Uri
         .parse('${Config.apiBaseUrl}/api/events')
         .replace(queryParameters: queryParameters);
-        print('[fetchMatches] URI construido: $uri');
+        debugPrint('[fetchMatches] URI construido: $uri');
 
   final startTime = DateTime.now();
   int duration = 0;
@@ -66,8 +109,8 @@ class MatchesViewModel extends ChangeNotifier {
     duration = DateTime.now().difference(startTime).inMilliseconds;
     statusCode = response.statusCode;
 
-    print('[fetchMatches] Código de estado: ${response.statusCode}');
-    print('[fetchMatches] Body de la respuesta: ${response.body}');
+    debugPrint('[fetchMatches] Código de estado: ${response.statusCode}');
+    debugPrint('[fetchMatches] Body de la respuesta: ${response.body}');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -80,9 +123,22 @@ class MatchesViewModel extends ChangeNotifier {
         return MatchModel.fromJson(e as Map<String, dynamic>);
       }).toList();
 
-      liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
-      upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
-      finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
+      // ---------------- Before micro-optimizing-----------------
+      // liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
+      // upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+      // finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
+      liveMatches.clear();
+      upcomingMatches.clear();
+      finishedMatches.clear();
+      for (final m in matches) {
+        switch (m.status.toLowerCase()) {
+          case 'live':      liveMatches.add(m); break;
+          case 'upcoming':  upcomingMatches.add(m); break;
+          case 'finished':  finishedMatches.add(m); break;
+        }
+      }
+
+
 
       success = true;
       notifyListeners();
@@ -125,9 +181,22 @@ class MatchesViewModel extends ChangeNotifier {
 }
 
 void _assignMatchesByStatus(List<MatchModel> matches) {
-  liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
-  upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
-  finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
+  // Before micro-optimizing
+  // liveMatches = matches.where((m) => m.status.toLowerCase() == 'live').toList();
+  // upcomingMatches = matches.where((m) => m.status.toLowerCase() == 'upcoming').toList();
+  // finishedMatches = matches.where((m) => m.status.toLowerCase() == 'finished').toList();
+
+  // After micro-optimizing
+  liveMatches.clear();
+  upcomingMatches.clear();
+  finishedMatches.clear();
+  for (final m in matches) {
+    switch (m.status.toLowerCase()) {
+      case 'live':      liveMatches.add(m); break;
+      case 'upcoming':  upcomingMatches.add(m); break;
+      case 'finished':  finishedMatches.add(m); break;
+    }
+  }
 }
 
 List<MatchModel> _generateFallbackMatches(LocationModel location) {
@@ -233,10 +302,10 @@ Future<void> checkProximityAndNotify() async {
         match.location.lng,
       );
 
-      print('User lat and lng: $userLat, $userLng');
-      print('Match location lat and lng: ${match.location.lat}, ${match.location.lng}');
+      debugPrint('User lat and lng: $userLat, $userLng');
+      debugPrint('Match location lat and lng: ${match.location.lat}, ${match.location.lng}');
       double distanceKm = distanceMeters / 1000.0;
-
+      
       if (distanceKm <= 1.0) {
         await _showNotification(
           title: 'Upcoming Event Nearby',
@@ -277,77 +346,112 @@ Future<void> checkProximityAndNotify() async {
       }
     }
   } catch (e) {
-    print('Error in checkProximityAndNotify: $e');
+    debugPrint('Error in checkProximityAndNotify: $e');
   }
 }
+// //-- Before micro-optimizing--------------------
+// /// Basic notification without actions.
+// Future<void> _showNotification({
+//   required String title,
+//   required String body,
+// }) async {
+//   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+//     'basic_channel_id',
+//     'Basic Notifications',
+//     channelDescription: 'Notifications for nearby events',
+//     importance: Importance.max,
+//     priority: Priority.high,
+//   );
+//   const NotificationDetails details = NotificationDetails(android: androidDetails);
 
-/// Basic notification without actions.
+//   await flutterLocalNotificationsPlugin.show(0, title, body, details);
+// }
+
 Future<void> _showNotification({
-  required String title,
-  required String body,
-}) async {
-  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'basic_channel_id',
-    'Basic Notifications',
-    channelDescription: 'Notifications for nearby events',
-    importance: Importance.max,
-    priority: Priority.high,
-  );
-  const NotificationDetails details = NotificationDetails(android: androidDetails);
+    required String title,
+    required String body,
+  }) async =>
+      flutterLocalNotificationsPlugin.show(
+        0,
+        title,
+        body,
+        _basicDetails,          
+      );
 
-  await flutterLocalNotificationsPlugin.show(0, title, body, details);
-}
 
-/// Notification for live events; if withBetNow is true, includes a "Bet Now" action.
-Future<void> _showLiveMatchNotification({
-  required MatchModel match,
-  required double distanceInKm,
-  required bool withBetNow,
-}) async {
-  AndroidNotificationDetails androidDetails;
-  if (withBetNow) {
-    androidDetails = const AndroidNotificationDetails(
-      'live_channel',
-      'Live Events',
-      channelDescription: 'Notifications for live events near you',
-      importance: Importance.max,
-      priority: Priority.high,
-      actions: <AndroidNotificationAction>[
-        AndroidNotificationAction('bet_now_action', 'Bet Now', showsUserInterface: true),
-      ],
-    );
-  } else {
-    androidDetails = const AndroidNotificationDetails(
-      'live_channel',
-      'Live Events',
-      channelDescription: 'Notifications for live events near you',
-      importance: Importance.max,
-      priority: Priority.high,
+// // -- Before micro-optimizing--------------------
+// /// Notification for live events; if withBetNow is true, includes a "Bet Now" action.
+// Future<void> _showLiveMatchNotification({
+//   required MatchModel match,
+//   required double distanceInKm,
+//   required bool withBetNow,
+// }) async {
+//   AndroidNotificationDetails androidDetails;
+//   if (withBetNow) {
+//     androidDetails = const AndroidNotificationDetails(
+//       'live_channel',
+//       'Live Events',
+//       channelDescription: 'Notifications for live events near you',
+//       importance: Importance.max,
+//       priority: Priority.high,
+//       actions: <AndroidNotificationAction>[
+//         AndroidNotificationAction('bet_now_action', 'Bet Now', showsUserInterface: true),
+//       ],
+//     );
+//   } else {
+//     androidDetails = const AndroidNotificationDetails(
+//       'live_channel',
+//       'Live Events',
+//       channelDescription: 'Notifications for live events near you',
+//       importance: Importance.max,
+//       priority: Priority.high,
+//     );
+//   }
+//   NotificationDetails details = NotificationDetails(android: androidDetails);
+
+//   AuthRepository authRepository = AuthRepository();
+//   String? userUID =  authService.value.currentUser?.uid;
+  
+
+//   final payloadMap = {
+//     'match': match.toJson(), // Serializa todo el objeto MatchModel
+//     'userUID': userUID,      // Incluye el uid del usuario
+//   };
+
+//   debugPrint('Payload notification: $payloadMap'); // Debugging line
+
+//   await flutterLocalNotificationsPlugin.show(
+//     withBetNow ? 1 : 2, // Use different notification IDs
+//     withBetNow ? 'Live Event - Bet Now!' : 'Live Event Nearby',
+//     '${match.homeTeam} vs ${match.awayTeam}\nDistance: ${distanceInKm.toStringAsFixed(2)} km \n coords: ${match.location.lat}, ${match.location.lng} \n location: La caneca',
+//     details,
+//     payload: jsonEncode(payloadMap), // Serializa el payload
+//     //payload: withBetNow ? 'bet_now_action' : null,
+//   );
+// }
+  
+
+   Future<void> _showLiveMatchNotification({
+    required MatchModel match,
+    required double distanceInKm,
+    required bool withBetNow,
+  }) async {
+    final details = withBetNow ? _liveBetDetails : _liveDetails;
+
+    await flutterLocalNotificationsPlugin.show(
+      withBetNow ? 1 : 2,
+      withBetNow ? 'Live Event - Bet Now!' : 'Live Event Nearby',
+      '${match.homeTeam} vs ${match.awayTeam}\n'
+      'Distance: ${distanceInKm.toStringAsFixed(2)} km',
+      details,                 // ← reutilizado
+      payload: jsonEncode({
+        'match': match.toJson(),
+        'userUID': authService.value.currentUser?.uid,
+      }),
     );
   }
-  NotificationDetails details = NotificationDetails(android: androidDetails);
 
-  AuthRepository authRepository = AuthRepository();
-  String? userUID =  authService.value.currentUser?.uid;
-  
 
-  final payloadMap = {
-    'match': match.toJson(), // Serializa todo el objeto MatchModel
-    'userUID': userUID,      // Incluye el uid del usuario
-  };
-
-  print('Payload notification: $payloadMap'); // Debugging line
-
-  await flutterLocalNotificationsPlugin.show(
-    withBetNow ? 1 : 2, // Use different notification IDs
-    withBetNow ? 'Live Event - Bet Now!' : 'Live Event Nearby',
-    '${match.homeTeam} vs ${match.awayTeam}\nDistance: ${distanceInKm.toStringAsFixed(2)} km \n coords: ${match.location.lat}, ${match.location.lng} \n location: La caneca',
-    details,
-    payload: jsonEncode(payloadMap), // Serializa el payload
-    //payload: withBetNow ? 'bet_now_action' : null,
-  );
-}
-  
 Future<void> sendUserLocation() async {
   final stopwatch = Stopwatch()..start();
   int? statusCode;
@@ -361,7 +465,7 @@ Future<void> sendUserLocation() async {
     // Obtener el usuario autenticado y su uid
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print('No hay usuario autenticado.');
+      debugPrint('No hay usuario autenticado.');
       return;
     }
     String uid = user.uid;
@@ -400,7 +504,7 @@ Future<void> sendUserLocation() async {
       );
     }
 
-    print("Respuesta del servidor: ${response.statusCode} - ${response.body}");
+    debugPrint("Respuesta del servidor: ${response.statusCode} - ${response.body}");
   } catch (e) {
     stopwatch.stop();
     error = e.toString();
@@ -408,7 +512,7 @@ Future<void> sendUserLocation() async {
       '/api/location',
       e.runtimeType.toString(),
     );
-    print("Error al enviar la ubicación: $e");
+    debugPrint("Error al enviar la ubicación: $e");
   } finally {
     await metrics_management.logApiMetric(
       endpoint: '/api/location',
@@ -457,8 +561,11 @@ Future<void> fetchMatchesWithFavorites({
       ? <String>[]
       : await _favoriteRepository.getFavoritesForUser(user.uid);
 
+  // Convert to Set for faster lookups when marking favorites
+  final favSet = favIds.toSet();
+
   for (var m in allMatches) {
-    m.isFavorite = favIds.contains(m.eventId);
+    m.isFavorite = favSet.contains(m.eventId);
   }
 
   //final favoriteMatches = await _favoriteRepository.getFavoriteMatches(user!.uid);
@@ -485,7 +592,7 @@ Future<void> toggleFavorite(String eventId, bool isFavorite, MatchModel match) a
       await _favoriteRepository.insertFavorite(user.uid, match.eventId);
       // Aquí puedes guardar el objeto completo en la base de datos local si es necesario
       await _matchRepository.addMatch(match); // Asumiendo que tienes un método para insertar el partido completo
-      print( "Partido favorito agregado: ${match.eventId}");
+      debugPrint( "Partido favorito agregado: ${match.eventId}");
     } else {
       // Elimina el favorito (por ejemplo, usando el eventId)
       await _favoriteRepository.deleteFavorite(user.uid, eventId);
@@ -500,7 +607,7 @@ Future<void> toggleFavorite(String eventId, bool isFavorite, MatchModel match) a
     }
     notifyListeners();
   } catch (e) {
-    print("Error toggling favorite for $eventId: $e");
+    debugPrint("Error toggling favorite for $eventId: $e");
   }
 }
 

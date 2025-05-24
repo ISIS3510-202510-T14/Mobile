@@ -16,6 +16,7 @@ import 'package:path/path.dart';
 import '../models/match_model.dart';
 import '../models/bet_model.dart';
 import '../models/recommended_bet_model.dart';
+import '../models/product_model.dart';
 
 class DatabaseHelper {
   // ------------------------ singleton boilerplate ------------------------
@@ -38,7 +39,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,                                 
+      version: 8,
       onCreate: _createDB,
       onUpgrade: (db, oldV, newV) async {
         if (oldV < 2) {
@@ -69,6 +70,43 @@ class DatabaseHelper {
               endpoint    TEXT    NOT NULL,
               error_type  TEXT    NOT NULL,
               timestamp   TEXT    NOT NULL
+            );
+          ''');
+        }
+        if (oldV < 6) {
+          // v6 – add products table
+          await db.execute('''
+            CREATE TABLE products (
+              id          TEXT PRIMARY KEY,
+              name        TEXT,
+              description TEXT,
+              price       REAL,
+              imageUrl    TEXT,
+              category    TEXT
+            );
+          ''');
+        }
+
+        if (oldV < 7) {
+          await db.execute('''
+            CREATE TABLE product_views (
+              id        INTEGER PRIMARY KEY AUTOINCREMENT,
+              userId    TEXT NOT NULL,
+              productId TEXT NOT NULL,
+              viewedAt  TEXT NOT NULL,
+              synced    INTEGER DEFAULT 0
+            );
+          ''');
+        }
+
+        if (oldV < 8) {
+          await db.execute('''
+            CREATE TABLE cart_items (
+              id         TEXT PRIMARY KEY,
+              userId     TEXT NOT NULL,
+              productId  TEXT NOT NULL,
+              quantity   INTEGER NOT NULL,
+              addedAt    TEXT
             );
           ''');
         }
@@ -149,6 +187,19 @@ class DatabaseHelper {
     ''';
     await db.execute(favoriteTable);
 
+    // PRODUCTS ----------------------------------------
+    const productsTable = '''
+      CREATE TABLE products (
+        id          TEXT PRIMARY KEY,
+        name        TEXT,
+        description TEXT,
+        price       REAL,
+        imageUrl    TEXT,
+        category    TEXT
+      );
+    ''';
+    await db.execute(productsTable);
+
     // define this at the top of your DatabaseHelper class
     const errorLogsTable = '''
       CREATE TABLE IF NOT EXISTS error_logs (
@@ -159,6 +210,34 @@ class DatabaseHelper {
       );
     ''';
     await db.execute(errorLogsTable);
+
+
+        // ...............................................................
+    // 2)  Initial schema  – add inside _createDB()
+    // ...............................................................
+    const productViewsTable = '''
+      CREATE TABLE product_views (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId     TEXT NOT NULL,
+        productId  TEXT    NOT NULL,
+        viewedAt   TEXT    NOT NULL,
+        synced     INTEGER DEFAULT 0
+      );
+    ''';
+    await db.execute(productViewsTable);
+
+    // CART_ITEMS ----------------------------------------
+    const cartItemsTable = '''
+      CREATE TABLE cart_items (
+        id         TEXT PRIMARY KEY,
+        userId     TEXT NOT NULL,
+        productId  TEXT NOT NULL,
+        quantity   INTEGER NOT NULL,
+        addedAt    TEXT
+      );
+    ''';
+    await db.execute(cartItemsTable);
+    
   }
   
 
@@ -475,6 +554,55 @@ Future<void> _pruneOldRecommendedBets() async {
     );
   }
 
+  // ************************************************************
+  //   PRODUCTS
+  // ************************************************************
+
+  Future<int> insertProduct(Product product) async {
+    final db = await database;
+    return await db.insert(
+      'products',
+      product.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Product?> getProduct(String id) async {
+    final db = await database;
+    final res = await db.query(
+      'products',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (res.isNotEmpty) return Product.fromJson(res.first);
+    return null;
+  }
+
+  Future<List<Product>> getAllProducts() async {
+    final db = await database;
+    final res = await db.query('products');
+    return res.map((j) => Product.fromJson(j)).toList();
+  }
+
+  Future<int> updateProduct(Product product) async {
+    final db = await database;
+    return await db.update(
+      'products',
+      product.toJson(),
+      where: 'id = ?',
+      whereArgs: [product.id],
+    );
+  }
+
+  Future<int> deleteProduct(String id) async {
+    final db = await database;
+    return await db.delete(
+      'products',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   // ─────────────── ERROR LOGS HELPERS ───────────────
   /// Insert a connection/error log into local storage.
   Future<void> insertErrorLog(String endpoint, String errorType) async {
@@ -500,4 +628,136 @@ Future<void> _pruneOldRecommendedBets() async {
     // Sqflite.firstIntValue unwraps the single integer result
     return Sqflite.firstIntValue(result) ?? 0;
   }
+
+  
+
+// ────────────────────────────────────────────────────────────────
+//   PRODUCT_VIEWS
+// ────────────────────────────────────────────────────────────────
+
+ Future<int> insertProductView(String productId, String userId) async {
+  final db = await database;
+  return await db.insert(
+    'product_views',
+    {
+      'productId': productId,
+      'viewedAt' : DateTime.now().toIso8601String(),
+      'userId'   : userId,
+    },
+    conflictAlgorithm: ConflictAlgorithm.replace,
+  );
+}
+
+/// Total de vistas para un producto (todos los usuarios)
+Future<int> countProductViews(String productId) async {
+  final db = await database;
+  final res = await db.rawQuery(
+    'SELECT COUNT(*) AS c FROM product_views WHERE productId = ?',
+    [productId],
+  );
+  return Sqflite.firstIntValue(res) ?? 0;
+}
+
+/// Vistas de un producto hechas por un usuario específico
+Future<int> countProductViewsByUser(String productId, String userId) async {
+  final db = await database;
+  final res = await db.rawQuery(
+    'SELECT COUNT(*) AS c FROM product_views '
+    'WHERE productId = ? AND userId = ?',
+    [productId, userId],
+  );
+  return Sqflite.firstIntValue(res) ?? 0;
+}
+
+/// Borra todas las vistas registradas para un producto (cualquier usuario)
+Future<int> deleteProductViews(String productId) async {
+  final db = await database;
+  return await db.delete(
+    'product_views',
+    where: 'productId = ?',
+    whereArgs: [productId],
+  );
+}
+
+/// Borra por completo la tabla de vistas
+Future<void> clearProductViews() async {
+  final db = await database;
+  await db.delete('product_views');
+}
+
+Future<List<Map<String, dynamic>>> getPendingProductViews({int limit = 500}) async {
+  final db = await database;
+    return await db.query(
+    'product_views',
+    columns: ['id', 'productId', 'userId', 'viewedAt'],   // <-- explícito
+    where: 'synced = 0',
+    orderBy: 'viewedAt DESC',
+    limit: limit,
+  );
+}
+
+Future<void> markProductViewsSynced(List<int> ids) async {
+  if (ids.isEmpty) return;
+  final db = await database;
+  final placeholders = List.filled(ids.length, '?').join(',');
+  await db.rawUpdate(
+    'UPDATE product_views SET synced = 1 WHERE id IN ($placeholders)',
+    ids.map((e) => e as Object).toList(),   // ← sqflite espera List<Object?>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
+//   PRODUCT_VIEWS
+// ────────────────────────────────────────────────────────────────
+  Future<int> addCartItem({
+    required String id,
+    required String userId,
+    required String productId,
+    required int quantity,
+    DateTime? addedAt,
+  }) async {
+    final db = await database;
+    print('Adding cart item to local storage: $id');
+    return await db.insert(
+      'cart_items',
+      {
+        'id': id,
+        'userId': userId,
+        'productId': productId,
+        'quantity': quantity,
+        'addedAt': (addedAt ?? DateTime.now()).toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getCartItems(String userId) async {
+  final db = await database;
+  print('Fetching cart items for user in local storage: $userId');
+  return await db.query(
+    'cart_items',
+    where: 'userId = ?',
+    whereArgs: [userId],
+  );
+}
+
+Future<int> removeCartItem(String id) async {
+  final db = await database;
+  print('Removing cart item with ID from local storage: $id');
+  return await db.delete(
+    'cart_items',
+    where: 'id = ?',
+    whereArgs: [id],
+  );
+}
+
+Future<int> clearCartItems(String userId) async {
+  final db = await database;
+  print('Clearing all cart items for user in local storage: $userId');
+  return await db.delete(
+    'cart_items',
+    where: 'userId = ?',
+    whereArgs: [userId],
+  );
+}
 }

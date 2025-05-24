@@ -18,6 +18,7 @@ import 'package:campus_picks/data/services/isolate_manager.dart';
 import 'package:campus_picks/data/services/connectivity_service.dart';
 import 'package:campus_picks/data/services/draft_sync_service.dart';
 import 'package:campus_picks/data/services/upload_service.dart';  // ← added
+import 'package:campus_picks/data/services/user_metrics_service.dart';
 
 import 'package:campus_picks/data/models/match_model.dart';
 
@@ -27,6 +28,8 @@ import 'package:campus_picks/presentation/viewmodels/user_viewmodel.dart';
 import 'package:campus_picks/presentation/viewmodels/auth_wrapper_viewmodel.dart';
 import 'package:campus_picks/presentation/viewmodels/bet_viewmodel.dart';
 import 'package:campus_picks/presentation/viewmodels/user_bets_view_model.dart';
+import 'package:campus_picks/presentation/viewmodels/cart_viewmodel.dart';
+import 'package:campus_picks/presentation/screens/cart_screen.dart';
 
 import 'theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -124,6 +127,9 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => UserViewModel(), lazy: false),
         ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
+        ChangeNotifierProvider(create: (ctx) => CartViewModel(
+          connectivity: ctx.read<ConnectivityNotifier>(),
+        )),
         ChangeNotifierProvider(
           lazy: false,
           create: (ctx) => DraftSyncService(
@@ -142,6 +148,7 @@ Future<void> main() async {
 
   // Temporary
   await UploadService.uploadErrorLogs();
+  await UserMetricsService.sendPendingMetrics();
 }
 
 /// Routes background tasks to your upload service
@@ -150,6 +157,7 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     if (task == 'uploadErrorLogs') {
       await UploadService.uploadErrorLogs();
+      await UserMetricsService.sendPendingMetrics();
     }
     return Future.value(true);
   });
@@ -165,6 +173,9 @@ class MyApp extends StatelessWidget {
       title: 'Demo Matches',
       theme: AppTheme.darkTheme,
       home: const AuthWrapper(),
+      routes: {
+        '/cart': (context) => const CartPage(),
+      }
     );
   }
 }
