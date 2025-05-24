@@ -255,7 +255,7 @@ class LiveMatchesTab extends StatelessWidget {
 
   return ListView.builder(
       itemCount: liveMatches.length,
-      itemExtent: 250,   // altura fija aproximada de la tarjeta
+      itemExtent: 285,   // altura fija aproximada de la tarjeta
       cacheExtent: 600,  // precarga 5 ítems fuera de pantalla
       itemBuilder: (context, index) {
         final match = liveMatches[index];
